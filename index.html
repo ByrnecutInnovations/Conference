@@ -315,8 +315,8 @@
         // Get all questions
         async function getQuestions() {
             try {
-                const result = await window.storage.get(QUESTIONS_KEY, true);
-                return result ? JSON.parse(result.value) : [];
+                const raw = localStorage.getItem(QUESTIONS_KEY);
+                return raw ? JSON.parse(raw) : [];
             } catch (error) {
                 return [];
             }
@@ -325,7 +325,7 @@
         // Save questions
         async function saveQuestions(questions) {
             try {
-                await window.storage.set(QUESTIONS_KEY, JSON.stringify(questions), true);
+                localStorage.setItem(QUESTIONS_KEY, JSON.stringify(questions));
                 return true;
             } catch (error) {
                 console.error('Error saving questions:', error);
@@ -336,10 +336,10 @@
         // Get next question ID
         async function getNextQuestionId() {
             try {
-                const result = await window.storage.get(QUESTION_COUNTER_KEY, true);
-                const counter = result ? parseInt(result.value) : 0;
+                const raw = localStorage.getItem(QUESTION_COUNTER_KEY);
+                const counter = raw ? parseInt(raw, 10) : 0;
                 const nextId = counter + 1;
-                await window.storage.set(QUESTION_COUNTER_KEY, nextId.toString(), true);
+                localStorage.setItem(QUESTION_COUNTER_KEY, nextId.toString());
                 return nextId;
             } catch (error) {
                 return Date.now();
