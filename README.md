@@ -1,5 +1,12 @@
 # Conference
 QnA for conference
-Audience: https://byrncutinnovations.github.io/Conference/
-Moderator: https://byrncutinnovations.github.io/Conference/?moderator=true
-Display: https://byrncutinnovations.github.io/Conference/?display=true
+
+Audience: 
+https://byrnecutinnovations.github.io/Conference/
+
+Moderator:
+https://byrnecutinnovations.github.io/Conference/?moderator=true
+
+
+Display:
+https://byrnecutinnovations.github.io/Conference/?display=true
