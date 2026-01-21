@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q&A Session</title>
+    <title>Byrnecut Q&A Session</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #F5A623;
             min-height: 100vh;
             padding: 20px;
         }
@@ -28,15 +28,22 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #F5A623;
+            color: #2D2D2D;
             padding: 30px;
             text-align: center;
+        }
+        
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
         }
         
         .header h1 {
             font-size: 28px;
             margin-bottom: 10px;
+            font-weight: 700;
         }
         
         .header p {
@@ -63,7 +70,7 @@
         
         label {
             font-weight: 600;
-            color: #333;
+            color: #2D2D2D;
             font-size: 14px;
         }
         
@@ -78,7 +85,7 @@
         
         input:focus, textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #F5A623;
         }
         
         textarea {
@@ -87,20 +94,20 @@
         }
         
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #F5A623;
+            color: #2D2D2D;
             border: none;
             padding: 14px 28px;
             border-radius: 8px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
         
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(245, 166, 35, 0.4);
         }
         
         button:active {
@@ -117,6 +124,16 @@
             background: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
             padding: 15px;
             border-radius: 8px;
             margin-top: 20px;
@@ -150,7 +167,7 @@
         }
         
         .question-card.pending {
-            border-left: 4px solid #ffc107;
+            border-left: 4px solid #F5A623;
         }
         
         .question-card.approved {
@@ -203,7 +220,7 @@
         
         .question-text {
             font-size: 16px;
-            color: #333;
+            color: #2D2D2D;
             margin-bottom: 12px;
             line-height: 1.5;
         }
@@ -229,14 +246,17 @@
         
         .btn-approve {
             background: #28a745;
+            color: white;
         }
         
         .btn-reject {
             background: #dc3545;
+            color: white;
         }
         
         .btn-answer {
             background: #6c757d;
+            color: white;
         }
         
         .empty-state {
@@ -254,7 +274,7 @@
         
         /* Display View */
         .display-view {
-            background: #1a1a1a;
+            background: #2D2D2D;
             min-height: 100vh;
             padding: 40px;
         }
@@ -265,10 +285,20 @@
         }
         
         .display-header {
-            color: white;
             text-align: center;
             margin-bottom: 40px;
-            font-size: 36px;
+        }
+        
+        .display-logo {
+            width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        
+        .display-title {
+            color: #F5A623;
+            font-size: 48px;
+            font-weight: 700;
         }
         
         .display-question {
@@ -277,11 +307,12 @@
             padding: 40px;
             margin-bottom: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border-left: 8px solid #F5A623;
         }
         
         .display-question-text {
             font-size: 28px;
-            color: #333;
+            color: #2D2D2D;
             line-height: 1.6;
             margin-bottom: 20px;
         }
@@ -302,55 +333,41 @@
 <body>
     <div id="app"></div>
     
-    <script>
-        const app = document.getElementById('app');
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, set, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoXUndzA5tynEW0LV7_nldit1Jx-wZXVU",
+            authDomain: "conference-qa-2375a.firebaseapp.com",
+            databaseURL: "https://conference-qa-2375a-default-rtdb.firebaseio.com",
+            projectId: "conference-qa-2375a",
+            storageBucket: "conference-qa-2375a.firebasestorage.app",
+            messagingSenderId: "911059882084",
+            appId: "1:911059882084:web:91ffa97c1f7564e695cf71"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const questionsRef = ref(database, 'questions');
+        
+        const appDiv = document.getElementById('app');
         const urlParams = new URLSearchParams(window.location.search);
         const isModerator = urlParams.get('moderator') === 'true';
         const isDisplay = urlParams.get('display') === 'true';
         
-        // Storage keys
-        const QUESTIONS_KEY = 'qanda_questions';
-        const QUESTION_COUNTER_KEY = 'qanda_counter';
-        
-        // Get all questions
-        async function getQuestions() {
-            try {
-                const raw = localStorage.getItem(QUESTIONS_KEY);
-                return raw ? JSON.parse(raw) : [];
-            } catch (error) {
-                return [];
-            }
-        }
-        
-        // Save questions
-        async function saveQuestions(questions) {
-            try {
-                localStorage.setItem(QUESTIONS_KEY, JSON.stringify(questions));
-                return true;
-            } catch (error) {
-                console.error('Error saving questions:', error);
-                return false;
-            }
-        }
-        
-        // Get next question ID
-        async function getNextQuestionId() {
-            try {
-                const raw = localStorage.getItem(QUESTION_COUNTER_KEY);
-                const counter = raw ? parseInt(raw, 10) : 0;
-                const nextId = counter + 1;
-                localStorage.setItem(QUESTION_COUNTER_KEY, nextId.toString());
-                return nextId;
-            } catch (error) {
-                return Date.now();
-            }
-        }
+        // Byrnecut logo as base64 (simplified version - you can replace with actual logo)
+        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='40' cy='40' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='160' cy='40' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='60' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='40' cy='100' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='160' cy='100' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='80' cy='100' r='15' fill='white'/%3E%3Ccircle cx='120' cy='100' r='15' fill='white'/%3E%3Ccircle cx='100' cy='140' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='40' cy='160' r='15' fill='%232D2D2D'/%3E%3Ccircle cx='160' cy='160' r='15' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
         // Audience View
         function renderAudienceView() {
-            app.innerHTML = `
+            appDiv.innerHTML = `
                 <div class="container">
                     <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
                         <h1>Submit Your Question</h1>
                         <p>Your question will be reviewed before being shown to the speaker</p>
                     </div>
@@ -382,29 +399,24 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
                 
-                const questions = await getQuestions();
-                const questionId = await getNextQuestionId();
-                
-                const newQuestion = {
-                    id: questionId,
-                    name: name,
-                    question: questionText,
-                    timestamp: new Date().toISOString(),
-                    status: 'pending'
-                };
-                
-                questions.push(newQuestion);
-                const saved = await saveQuestions(questions);
-                
-                if (saved) {
+                try {
+                    const newQuestionRef = push(questionsRef);
+                    await set(newQuestionRef, {
+                        name: name,
+                        question: questionText,
+                        timestamp: Date.now(),
+                        status: 'pending'
+                    });
+                    
                     messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully! Thank you.</div>';
                     document.getElementById('questionForm').reset();
                     
                     setTimeout(() => {
                         messageDiv.innerHTML = '';
                     }, 5000);
-                } else {
+                } catch (error) {
                     messageDiv.innerHTML = '<div class="error-message">Error submitting question. Please try again.</div>';
+                    console.error('Error:', error);
                 }
                 
                 submitBtn.disabled = false;
@@ -413,19 +425,22 @@
         }
         
         // Moderator View
+        let currentFilter = 'all';
+        let allQuestions = {};
+        
         function renderModeratorView() {
-            app.innerHTML = `
+            appDiv.innerHTML = `
                 <div class="container">
                     <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
                         <h1>Moderator Dashboard</h1>
                         <p>Review and manage submitted questions</p>
                     </div>
                     <div class="content">
                         <div class="moderator-controls">
-                            <button onclick="refreshQuestions()">🔄 Refresh</button>
-                            <button onclick="filterQuestions('all')" id="filterAll">All Questions</button>
-                            <button onclick="filterQuestions('pending')" id="filterPending">Pending</button>
-                            <button onclick="filterQuestions('approved')" id="filterApproved">Approved</button>
+                            <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
+                            <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
+                            <button onclick="window.filterQuestions('approved')" id="filterApproved">Approved</button>
                         </div>
                         <div id="questionList" class="question-list">
                             <div class="loading">Loading questions...</div>
@@ -434,34 +449,38 @@
                 </div>
             `;
             
-            refreshQuestions();
+            // Listen for real-time updates
+            onValue(questionsRef, (snapshot) => {
+                allQuestions = snapshot.val() || {};
+                displayQuestions();
+            });
         }
         
-        let currentFilter = 'all';
-        
-        async function refreshQuestions() {
-            const questions = await getQuestions();
-            displayQuestions(questions);
-        }
-        
-        function filterQuestions(filter) {
+        window.filterQuestions = function(filter) {
             currentFilter = filter;
             document.querySelectorAll('.moderator-controls button').forEach(btn => {
                 btn.style.opacity = '0.6';
             });
-            document.getElementById('filter' + filter.charAt(0).toUpperCase() + filter.slice(1)).style.opacity = '1';
-            refreshQuestions();
-        }
+            const btnId = 'filter' + filter.charAt(0).toUpperCase() + filter.slice(1);
+            const btn = document.getElementById(btnId);
+            if (btn) btn.style.opacity = '1';
+            displayQuestions();
+        };
         
-        function displayQuestions(allQuestions) {
+        function displayQuestions() {
             const questionList = document.getElementById('questionList');
+            if (!questionList) return;
             
-            let questions = allQuestions;
+            let questions = Object.entries(allQuestions).map(([id, data]) => ({
+                id,
+                ...data
+            }));
+            
             if (currentFilter !== 'all') {
                 questions = questions.filter(q => q.status === currentFilter);
             }
             
-            questions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            questions.sort((a, b) => b.timestamp - a.timestamp);
             
             if (questions.length === 0) {
                 questionList.innerHTML = `
@@ -488,40 +507,32 @@
                     <div class="question-name">— ${escapeHtml(q.name)}</div>
                     <div class="question-actions">
                         ${q.status === 'pending' ? `
-                            <button class="btn-approve" onclick="updateQuestionStatus(${q.id}, 'approved')">✓ Approve</button>
-                            <button class="btn-reject" onclick="deleteQuestion(${q.id})">✗ Reject</button>
+                            <button class="btn-approve" onclick="window.updateQuestionStatus('${q.id}', 'approved')">✓ Approve</button>
+                            <button class="btn-reject" onclick="window.deleteQuestion('${q.id}')">✗ Reject</button>
                         ` : ''}
                         ${q.status === 'approved' ? `
-                            <button class="btn-answer" onclick="updateQuestionStatus(${q.id}, 'answered')">Mark Answered</button>
-                            <button class="btn-reject" onclick="deleteQuestion(${q.id})">Delete</button>
+                            <button class="btn-answer" onclick="window.updateQuestionStatus('${q.id}', 'answered')">Mark Answered</button>
+                            <button class="btn-reject" onclick="window.deleteQuestion('${q.id}')">Delete</button>
                         ` : ''}
                         ${q.status === 'answered' ? `
-                            <button onclick="updateQuestionStatus(${q.id}, 'approved')">Unmark</button>
-                            <button class="btn-reject" onclick="deleteQuestion(${q.id})">Delete</button>
+                            <button onclick="window.updateQuestionStatus('${q.id}', 'approved')">Unmark</button>
+                            <button class="btn-reject" onclick="window.deleteQuestion('${q.id}')">Delete</button>
                         ` : ''}
                     </div>
                 </div>
             `).join('');
         }
         
-        async function updateQuestionStatus(id, status) {
-            const questions = await getQuestions();
-            const question = questions.find(q => q.id === id);
-            if (question) {
-                question.status = status;
-                await saveQuestions(questions);
-                refreshQuestions();
-            }
-        }
+        window.updateQuestionStatus = async function(id, status) {
+            const questionRef = ref(database, `questions/${id}`);
+            await update(questionRef, { status });
+        };
         
-        async function deleteQuestion(id) {
+        window.deleteQuestion = async function(id) {
             if (!confirm('Are you sure you want to delete this question?')) return;
-            
-            const questions = await getQuestions();
-            const filtered = questions.filter(q => q.id !== id);
-            await saveQuestions(filtered);
-            refreshQuestions();
-        }
+            const questionRef = ref(database, `questions/${id}`);
+            await remove(questionRef);
+        };
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -532,23 +543,33 @@
         // Display View
         function renderDisplayView() {
             document.body.className = 'display-view';
-            app.innerHTML = `
+            appDiv.innerHTML = `
                 <div class="display-container">
-                    <h1 class="display-header">Questions</h1>
+                    <div class="display-header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
+                        <h1 class="display-title">Questions</h1>
+                    </div>
                     <div id="displayQuestions">
                         <div class="loading" style="color: white;">Loading questions...</div>
                     </div>
                 </div>
             `;
             
-            refreshDisplayQuestions();
-            setInterval(refreshDisplayQuestions, 5000);
+            // Listen for real-time updates
+            onValue(questionsRef, (snapshot) => {
+                const questions = snapshot.val() || {};
+                displayApprovedQuestions(questions);
+            });
         }
         
-        async function refreshDisplayQuestions() {
-            const questions = await getQuestions();
-            const approved = questions.filter(q => q.status === 'approved');
+        function displayApprovedQuestions(allQuestions) {
             const displayDiv = document.getElementById('displayQuestions');
+            if (!displayDiv) return;
+            
+            const approved = Object.entries(allQuestions)
+                .map(([id, data]) => ({ id, ...data }))
+                .filter(q => q.status === 'approved')
+                .sort((a, b) => b.timestamp - a.timestamp);
             
             if (approved.length === 0) {
                 displayDiv.innerHTML = `
@@ -561,8 +582,6 @@
                 `;
                 return;
             }
-            
-            approved.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
             displayDiv.innerHTML = approved.map(q => `
                 <div class="display-question">
