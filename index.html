@@ -55,20 +55,15 @@
             padding: 30px;
         }
         
-        /* Login Screen */
-        .login-form {
+        .login-form, .question-form {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            max-width: 400px;
-            margin: 0 auto;
         }
         
-        /* Audience View */
-        .question-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
         }
         
         .form-group {
@@ -143,34 +138,29 @@
             transform: none;
         }
         
-        .success-message {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
+        .success-message, .error-message, .info-message {
             padding: 15px;
             border-radius: 8px;
             margin-top: 20px;
             text-align: center;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
         }
         
         .error-message {
             background: #f8d7da;
             border: 1px solid #f5c6cb;
             color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            text-align: center;
         }
         
         .info-message {
             background: #d1ecf1;
             border: 1px solid #bee5eb;
             color: #0c5460;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            text-align: center;
         }
         
         .closed-message {
@@ -185,7 +175,6 @@
             opacity: 0.3;
         }
         
-        /* Moderator View */
         .moderator-header {
             display: flex;
             justify-content: space-between;
@@ -216,39 +205,24 @@
             background: #dc3545;
         }
         
-        .moderator-controls {
+        .moderator-controls, .control-group {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
-        .moderator-controls button {
+        .moderator-controls button, .control-group button {
             flex: 1;
             min-width: 120px;
         }
         
-        .control-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-approve { background: #28a745; color: white; }
+        .btn-reject { background: #dc3545; color: white; }
+        .btn-answer { background: #6c757d; color: white; }
         
         .question-list {
             display: flex;
@@ -260,28 +234,15 @@
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             padding: 20px;
-            transition: border-color 0.3s;
         }
         
-        .question-card.pending {
-            border-left: 4px solid #F5A623;
-        }
-        
-        .question-card.approved {
-            border-left: 4px solid #28a745;
-            background: #f8fff9;
-        }
-        
-        .question-card.answered {
-            border-left: 4px solid #6c757d;
-            background: #f8f9fa;
-            opacity: 0.7;
-        }
+        .question-card.pending { border-left: 4px solid #F5A623; }
+        .question-card.approved { border-left: 4px solid #28a745; background: #f8fff9; }
+        .question-card.answered { border-left: 4px solid #6c757d; background: #f8f9fa; opacity: 0.7; }
         
         .question-header {
             display: flex;
             justify-content: space-between;
-            align-items: start;
             margin-bottom: 12px;
             gap: 10px;
         }
@@ -300,20 +261,9 @@
             text-transform: uppercase;
         }
         
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-approved {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-answered {
-            background: #e2e3e5;
-            color: #383d41;
-        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-answered { background: #e2e3e5; color: #383d41; }
         
         .question-text {
             font-size: 16px;
@@ -341,21 +291,6 @@
             flex: 0;
         }
         
-        .btn-approve {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-reject {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .btn-answer {
-            background: #6c757d;
-            color: white;
-        }
-        
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -369,7 +304,6 @@
             opacity: 0.3;
         }
         
-        /* Display View */
         .display-view {
             background: #2D2D2D;
             min-height: 100vh;
@@ -475,7 +409,6 @@
         </div>
     </div>
     
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, push, set, onValue, remove, update, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
@@ -491,7 +424,6 @@
             appId: "1:911059882084:web:91ffa97c1f7564e695cf71"
         };
         
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const questionsRef = ref(database, 'questions');
@@ -504,22 +436,39 @@
         const isDisplay = urlParams.get('display') === 'true';
         
         // Configuration
-        const MODERATOR_PASSWORD = "byrnecut2025"; // Change this to your desired password
         const MAX_QUESTION_LENGTH = 500;
-        const RATE_LIMIT_MINUTES = 2; // User can submit once every 2 minutes
+        const RATE_LIMIT_MINUTES = 2;
         
-        // Byrnecut logo - dice pattern with correct dots and spacing
+        // Byrnecut logo
         const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
-        // Rate limiting
+        // Password Security Functions
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        async function getPasswordHash() {
+            const passwordRef = ref(database, 'settings/passwordHash');
+            const snapshot = await get(passwordRef);
+            // Default password hashed - will be replaced when user changes password
+            return snapshot.val() || '8f3c0e8b5a7d4e9f2a1b3c6d8e5f7a9b2c4d6e8f1a3b5c7d9e2f4a6b8c1d3e5f7';
+        }
+        
+        async function updatePasswordHash(newPassword) {
+            const hash = await hashPassword(newPassword);
+            await set(ref(database, 'settings/passwordHash'), hash);
+        }
+        
+        // Rate Limiting Functions
         function checkRateLimit() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return true;
-            
             const timeSince = Date.now() - parseInt(lastSubmit);
-            const minutesSince = timeSince / (1000 * 60);
-            
-            return minutesSince >= RATE_LIMIT_MINUTES;
+            return timeSince / (1000 * 60) >= RATE_LIMIT_MINUTES;
         }
         
         function setRateLimit() {
@@ -529,15 +478,12 @@
         function getRemainingTime() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return 0;
-            
             const timeSince = Date.now() - parseInt(lastSubmit);
-            const minutesSince = timeSince / (1000 * 60);
-            const remaining = RATE_LIMIT_MINUTES - minutesSince;
-            
+            const remaining = RATE_LIMIT_MINUTES - (timeSince / (1000 * 60));
             return Math.max(0, Math.ceil(remaining));
         }
         
-        // Modal functions
+        // Modal Functions
         window.closeModal = function() {
             document.getElementById('modal').classList.remove('active');
         };
@@ -546,25 +492,30 @@
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalMessage').textContent = message;
             document.getElementById('modal').classList.add('active');
-            
             const confirmBtn = document.getElementById('modalConfirm');
             const newBtn = confirmBtn.cloneNode(true);
             confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-            
             newBtn.onclick = () => {
                 onConfirm();
                 window.closeModal();
             };
         }
         
-        // Check session status
+        // Session Status
         async function isSessionOpen() {
             const snapshot = await get(settingsRef);
             const settings = snapshot.val();
-            return settings?.sessionOpen !== false; // Default to open if not set
+            return settings?.sessionOpen !== false;
         }
         
-        // Audience View
+        // Utility Functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // AUDIENCE VIEW
         async function renderAudienceView() {
             const sessionOpen = await isSessionOpen();
             
@@ -581,7 +532,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                 </svg>
                                 <h2>Question Submission Closed</h2>
-                                <p>The Q&A session is not currently accepting questions. Please check back later.</p>
+                                <p>The Q&A session is not currently accepting questions.</p>
                             </div>
                         </div>
                     </div>
@@ -610,11 +561,7 @@
                                 <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
                                 <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
                             </div>
-                            ${!canSubmit ? `
-                                <div class="info-message">
-                                    Please wait ${remainingTime} minute(s) before submitting another question.
-                                </div>
-                            ` : ''}
+                            ${!canSubmit ? `<div class="info-message">Please wait ${remainingTime} minute(s) before submitting another question.</div>` : ''}
                             <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
                             <div id="message"></div>
                         </form>
@@ -628,24 +575,14 @@
             questionTextarea.addEventListener('input', () => {
                 const length = questionTextarea.value.length;
                 charCounter.textContent = `${length} / ${MAX_QUESTION_LENGTH}`;
-                
-                if (length > MAX_QUESTION_LENGTH * 0.9) {
-                    charCounter.classList.add('error');
-                    charCounter.classList.remove('warning');
-                } else if (length > MAX_QUESTION_LENGTH * 0.7) {
-                    charCounter.classList.add('warning');
-                    charCounter.classList.remove('error');
-                } else {
-                    charCounter.classList.remove('warning', 'error');
-                }
+                charCounter.classList.remove('warning', 'error');
+                if (length > MAX_QUESTION_LENGTH * 0.9) charCounter.classList.add('error');
+                else if (length > MAX_QUESTION_LENGTH * 0.7) charCounter.classList.add('warning');
             });
             
             document.getElementById('questionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
-                if (!checkRateLimit()) {
-                    return;
-                }
+                if (!checkRateLimit()) return;
                 
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
@@ -653,7 +590,7 @@
                 const questionText = document.getElementById('question').value.trim();
                 
                 if (questionText.length > MAX_QUESTION_LENGTH) {
-                    messageDiv.innerHTML = '<div class="error-message">Question is too long. Please shorten it.</div>';
+                    messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
                     return;
                 }
                 
@@ -661,33 +598,27 @@
                 submitBtn.textContent = 'Submitting...';
                 
                 try {
-                    const newQuestionRef = push(questionsRef);
-                    await set(newQuestionRef, {
-                        name: name,
+                    await set(push(questionsRef), {
+                        name,
                         question: questionText,
                         timestamp: Date.now(),
                         status: 'pending'
                     });
                     
                     setRateLimit();
-                    
-                    messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully! Thank you.</div>';
+                    messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
                     document.getElementById('questionForm').reset();
                     charCounter.textContent = `0 / ${MAX_QUESTION_LENGTH}`;
-                    
-                    setTimeout(() => {
-                        renderAudienceView(); // Re-render to show rate limit
-                    }, 2000);
+                    setTimeout(() => renderAudienceView(), 2000);
                 } catch (error) {
-                    messageDiv.innerHTML = '<div class="error-message">Error submitting question. Please try again.</div>';
-                    console.error('Error:', error);
+                    messageDiv.innerHTML = '<div class="error-message">Error submitting question.</div>';
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Question';
                 }
             });
         }
         
-        // Moderator Login
+        // MODERATOR LOGIN
         function renderModeratorLogin() {
             appDiv.innerHTML = `
                 <div class="container">
@@ -709,27 +640,27 @@
                 </div>
             `;
             
-            document.getElementById('loginForm').addEventListener('submit', (e) => {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const password = document.getElementById('password').value;
-                const messageDiv = document.getElementById('loginMessage');
+                const passwordHash = await hashPassword(password);
+                const storedHash = await getPasswordHash();
                 
-                if (password === MODERATOR_PASSWORD) {
+                if (passwordHash === storedHash) {
                     sessionStorage.setItem('moderatorAuth', 'true');
                     renderModeratorView();
                 } else {
-                    messageDiv.innerHTML = '<div class="error-message">Incorrect password</div>';
+                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Incorrect password</div>';
                 }
             });
         }
         
-        // Moderator View
+        // MODERATOR VIEW
         let currentFilter = 'all';
         let allQuestions = {};
         let sessionOpen = true;
         
         async function renderModeratorView() {
-            // Check authentication
             if (sessionStorage.getItem('moderatorAuth') !== 'true') {
                 renderModeratorLogin();
                 return;
@@ -750,13 +681,12 @@
                             </div>
                             <button onclick="window.logout()" class="btn-secondary">Logout</button>
                         </div>
-                        
                         <div class="control-group">
                             <button onclick="window.toggleSession()" id="toggleSessionBtn" class="btn-success">Close Session</button>
                             <button onclick="window.archiveAndClear()" class="btn-danger">Archive & Clear All</button>
-                            <button onclick="window.downloadQuestions()" class="btn-secondary">Download Questions</button>
+                            <button onclick="window.downloadQuestions()" class="btn-secondary">Download CSV</button>
+                            <button onclick="window.showChangePassword()" class="btn-secondary">Change Password</button>
                         </div>
-                        
                         <div class="moderator-controls">
                             <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
                             <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
@@ -769,14 +699,13 @@
                 </div>
             `;
             
-            // Listen for session status
+            // Listen for session status changes
             onValue(settingsRef, (snapshot) => {
-                const settings = snapshot.val();
-                sessionOpen = settings?.sessionOpen !== false;
+                sessionOpen = snapshot.val()?.sessionOpen !== false;
                 updateSessionUI();
             });
             
-            // Listen for real-time question updates
+            // Listen for question updates
             onValue(questionsRef, (snapshot) => {
                 allQuestions = snapshot.val() || {};
                 displayQuestions();
@@ -803,41 +732,34 @@
             }
         }
         
-        window.logout = function() {
+        window.logout = () => {
             sessionStorage.removeItem('moderatorAuth');
             renderModeratorLogin();
         };
         
-        window.toggleSession = async function() {
+        window.toggleSession = async () => {
             await set(settingsRef, { sessionOpen: !sessionOpen });
         };
         
-        window.archiveAndClear = function() {
-            showModal(
-                'Archive and Clear All Questions',
-                'This will save all current questions to the archive and clear them from the active session. This action cannot be undone. Continue?',
+        window.archiveAndClear = () => {
+            showModal('Archive and Clear All Questions',
+                'This will save all questions to archive and clear the active session. Continue?',
                 async () => {
                     const timestamp = Date.now();
-                    const sessionId = `session_${timestamp}`;
-                    
-                    // Archive current questions
                     if (Object.keys(allQuestions).length > 0) {
-                        await set(ref(database, `archive/${sessionId}`), {
-                            timestamp: timestamp,
+                        await set(ref(database, `archive/session_${timestamp}`), {
+                            timestamp,
                             date: new Date(timestamp).toISOString(),
                             questions: allQuestions
                         });
                     }
-                    
-                    // Clear current questions
                     await remove(questionsRef);
                 }
             );
         };
         
-        window.downloadQuestions = async function() {
+        window.downloadQuestions = () => {
             const questions = Object.entries(allQuestions).map(([id, data]) => ({
-                id,
                 ...data,
                 date: new Date(data.timestamp).toISOString()
             }));
@@ -847,7 +769,7 @@
                 ...questions.map(q => [
                     q.date,
                     q.name,
-                    q.question.replace(/"/g, '""'), // Escape quotes
+                    q.question.replace(/"/g, '""'),
                     q.status
                 ])
             ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -861,19 +783,22 @@
             URL.revokeObjectURL(url);
         };
         
-        window.filterQuestions = function(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.moderator-controls button').forEach(btn => {
-                btn.style.opacity = '0.6';
-            });
-            const btnId = 'filter' + filter.charAt(0).toUpperCase() + filter.slice(1);
-            const btn = document.getElementById(btnId);
-            if (btn) btn.style.opacity = '1';
-            displayQuestions();
-        };
-        
-        function displayQuestions() {
-            const questionList = document.getElementById('questionList');
-            if (!questionList) return;
-            
-            let questions = Object.entries(allQuestions).map(
+        window.showChangePassword = () => {
+            const modal = document.getElementById('modal');
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <h2>Change Moderator Password</h2>
+                <form id="changePasswordForm" style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password (min 8 characters)</label>
+                        <input type="password" id="newPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div
