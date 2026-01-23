@@ -747,7 +747,8 @@
         };
         
         window.toggleSession = async () => {
-            await set(settingsRef, { sessionOpen: !sessionOpen });
+            // Use update so we don't overwrite other settings like passwordHash
+            await update(settingsRef, { sessionOpen: !sessionOpen });
         };
         
         window.archiveAndClear = () => {
