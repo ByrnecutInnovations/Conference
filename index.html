@@ -454,8 +454,17 @@
         async function getPasswordHash() {
             const passwordRef = ref(database, 'settings/passwordHash');
             const snapshot = await get(passwordRef);
-            // Default password hashed - will be replaced when user changes password
-            return snapshot.val() || '8f3c0e8b5a7d4e9f2a1b3c6d8e5f7a9b2c4d6e8f1a3b5c7d9e2f4a6b8c1d3e5f7';
+            const storedHash = snapshot.val();
+            
+            // If no password hash exists, initialize with default password "byrnecut2025"
+            if (!storedHash) {
+                const defaultPassword = 'byrnecut2025';
+                const defaultHash = await hashPassword(defaultPassword);
+                await set(passwordRef, defaultHash);
+                return defaultHash;
+            }
+            
+            return storedHash;
         }
         
         async function updatePasswordHash(newPassword) {
