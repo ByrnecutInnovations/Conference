@@ -801,4 +801,207 @@
                         <label for="confirmPassword">Confirm New Password</label>
                         <input type="password" id="confirmPassword" required style="width: 100%; margin-bottom: 15px;">
                     </div>
-                    <div
+                    <div id="changePasswordMessage"></div>
+                    <div class="modal-buttons">
+                        <button type="button" class="btn-secondary" onclick="window.closeModal()">Cancel</button>
+                        <button type="submit" class="btn-success">Update Password</button>
+                    </div>
+                </form>
+            `;
+
+            modal.classList.add('active');
+
+            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const message = document.getElementById('changePasswordMessage');
+                message.innerHTML = '';
+
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+
+                if (newPassword.length < 8) {
+                    message.innerHTML = '<div class="error-message">New password must be at least 8 characters.</div>';
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    message.innerHTML = '<div class="error-message">New password and confirmation do not match.</div>';
+                    return;
+                }
+
+                try {
+                    const currentHash = await hashPassword(currentPassword);
+                    const storedHash = await getPasswordHash();
+                    if (currentHash !== storedHash) {
+                        message.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
+                        return;
+                    }
+
+                    await updatePasswordHash(newPassword);
+                    message.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
+                    setTimeout(() => window.closeModal(), 1200);
+                } catch (err) {
+                    message.innerHTML = '<div class="error-message">Error updating password.</div>';
+                }
+            });
+        };
+
+        // Question moderation actions
+        window.filterQuestions = (filter) => {
+            currentFilter = filter;
+            displayQuestions();
+        };
+
+        window.approveQuestion = async (id) => {
+            await update(ref(database, `questions/${id}`), { status: 'approved' });
+        };
+
+        window.rejectQuestion = (id) => {
+            showModal('Reject question', 'This will permanently delete the question. Continue?', async () => {
+                await remove(ref(database, `questions/${id}`));
+            });
+        };
+
+        window.markAnswered = async (id) => {
+            await update(ref(database, `questions/${id}`), { status: 'answered' });
+        };
+
+        function displayQuestions() {
+            const list = document.getElementById('questionList');
+            if (!list) return;
+
+            const entries = Object.entries(allQuestions || {})
+                .map(([id, q]) => ({ id, ...(q || {}) }))
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            const filtered = entries.filter(q => currentFilter === 'all' || q.status === currentFilter);
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3>No questions</h3>
+                        <p>Nothing to show for this filter.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = filtered.map(q => {
+                const status = q.status || 'pending';
+                const safeQuestion = escapeHtml(q.question || '');
+                const safeName = escapeHtml(q.name || 'Anonymous');
+                const date = q.timestamp ? new Date(q.timestamp).toLocaleString() : '';
+
+                const actions = (status === 'pending') ? `
+                    <button class="btn-approve" onclick="window.approveQuestion('${q.id}')">Approve</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Reject</button>
+                ` : (status === 'approved') ? `
+                    <button class="btn-answer" onclick="window.markAnswered('${q.id}')">Mark Answered</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>
+                ` : `
+                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>
+                `;
+
+                return `
+                    <div class="question-card ${status}">
+                        <div class="question-header">
+                            <div class="question-meta">${date}</div>
+                            <span class="question-status status-${status}">${status}</span>
+                        </div>
+                        <div class="question-text">${safeQuestion}</div>
+                        <div class="question-name">— ${safeName}</div>
+                        <div class="question-actions">${actions}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // DISPLAY VIEW (big screen)
+        function renderDisplayView() {
+            document.body.style.padding = '0';
+            document.body.style.background = '#2D2D2D';
+
+            appDiv.innerHTML = `
+                <div class="display-view">
+                    <div class="display-container">
+                        <div class="display-header">
+                            <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
+                            <div class="display-title">Q&A</div>
+                        </div>
+                        <div id="displayQuestions"></div>
+                    </div>
+                </div>
+            `;
+
+            const host = document.getElementById('displayQuestions');
+            host.innerHTML = '<div class="loading">Loading questions...</div>';
+
+            onValue(questionsRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                const approved = Object.entries(data)
+                    .map(([id, q]) => ({ id, ...(q || {}) }))
+                    .filter(q => q.status === 'approved')
+                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                if (approved.length === 0) {
+                    host.innerHTML = `
+                        <div class="display-question">
+                            <div class="display-question-text">No approved questions yet.</div>
+                            <div class="display-question-name">Waiting for moderator…</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                host.innerHTML = approved.map(q => `
+                    <div class="display-question">
+                        <div class="display-question-text">${escapeHtml(q.question || '')}</div>
+                        <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
+                    </div>
+                `).join('');
+            });
+        }
+
+        function renderFatalError(message, err) {
+            const details = err ? (err.stack || err.message || String(err)) : '';
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>App error</h1>
+                        <p>Something prevented the page from loading.</p>
+                    </div>
+                    <div class="content">
+                        <div class="error-message">${escapeHtml(message || 'Unknown error')}</div>
+                        ${details ? `<pre style="white-space: pre-wrap; margin-top: 12px; font-size: 12px; color: #444;">${escapeHtml(details)}</pre>` : ''}
+                        <div class="info-message" style="margin-top: 12px;">
+                            If you opened this via <b>file://</b>, Firebase modules may not load. Use a local web server (e.g. VS Code Live Server).
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // App bootstrap / routing
+        async function bootstrap() {
+            if (!appDiv) return;
+            if (isDisplay) return renderDisplayView();
+            if (isModerator) return renderModeratorView();
+            return renderAudienceView();
+        }
+
+        window.addEventListener('error', (e) => {
+            renderFatalError('Uncaught error', e.error || e.message);
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            renderFatalError('Unhandled promise rejection', e.reason);
+        });
+
+        bootstrap().catch((err) => renderFatalError('Failed to start app', err));
+    </script>
+</body>
+</html>
