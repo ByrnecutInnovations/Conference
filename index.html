@@ -675,11 +675,15 @@
                         <form class="login-form" id="loginForm">
                             <div class="form-group">
                                 <label for="password">Password</label>
-                                <input type="password" id="password" placeholder="Enter moderator password (default: 123)" required>
+                                <input type="password" id="password" placeholder="Enter moderator password" required>
                             </div>
                             <button type="submit" id="loginBtn">Login</button>
                             <div id="loginMessage"></div>
                         </form>
+                        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 12px;">
+                            <strong>Setup Help:</strong> If login fails, you may need to manually add the password hash to Firebase.<br>
+                            <button onclick="window.showPasswordHash()" class="btn-secondary" style="margin-top: 10px; padding: 8px 16px; font-size: 12px;">Generate Hash for Password</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -714,18 +718,44 @@
                         updateLastActivity();
                         renderModeratorView();
                     } else {
-                        messageDiv.innerHTML = '<div class="error-message">Incorrect password. Default password is "123"</div>';
+                        messageDiv.innerHTML = '<div class="error-message">Incorrect password</div>';
                         loginBtn.disabled = false;
                         loginBtn.textContent = 'Login';
                     }
                 } catch (error) {
                     console.error('Login error:', error);
-                    messageDiv.innerHTML = `<div class="error-message">Login error: ${error.message}. Check console for details.</div>`;
+                    messageDiv.innerHTML = `<div class="error-message">Login error: ${error.message}</div>`;
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
             });
         }
+        
+        window.showPasswordHash = async () => {
+            const password = prompt('Enter the password you want to use:');
+            if (!password) return;
+            
+            const hash = await hashPassword(password, '');
+            const modal = document.getElementById('modal');
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <h2>Password Hash Generated</h2>
+                <p style="margin: 15px 0;">Add this to Firebase at <code>settings/password</code>:</p>
+                <textarea readonly style="width: 100%; height: 100px; font-family: monospace; font-size: 11px; padding: 10px;">{
+  "hash": "${hash}"
+}</textarea>
+                <p style="margin: 15px 0; font-size: 13px; color: #666;">
+                    Or go to Firebase Console → Realtime Database → settings → + (add child)<br>
+                    Name: <strong>password</strong><br>
+                    Then add child: <strong>hash</strong> with value: <strong>${hash}</strong>
+                </p>
+                <div class="modal-buttons">
+                    <button onclick="window.closeModal()" class="btn-secondary">Close</button>
+                    <button onclick="navigator.clipboard.writeText('${hash}')" class="btn-success">Copy Hash</button>
+                </div>
+            `;
+            modal.classList.add('active');
+        };
         
         let currentFilter = 'all';
         let allQuestions = {};
