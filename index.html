@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.firebaseio.com https://*.firebaseapp.com https://*.googleapis.com; font-src 'self' data:;">
     <title>Byrnecut Q&A Session</title>
     <style>
         * {
@@ -437,39 +438,71 @@
         
         // Configuration
         const MAX_QUESTION_LENGTH = 500;
+        const MAX_NAME_LENGTH = 100;
+        const MAX_PASSWORD_LENGTH = 128;
+        const MIN_PASSWORD_LENGTH = 8;
         const RATE_LIMIT_MINUTES = 2;
         
         // Byrnecut logo
         const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
-        // Password Security Functions
-        async function hashPassword(password) {
+        // Password Security Functions with Salt
+        function generateSalt() {
+            // Generate a random 32-byte salt
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        async function hashPassword(password, salt) {
+            // Combine password and salt, then hash
             const encoder = new TextEncoder();
-            const data = encoder.encode(password);
+            const saltedPassword = password + salt;
+            const data = encoder.encode(saltedPassword);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function getPasswordHash() {
-            const passwordRef = ref(database, 'settings/passwordHash');
-            const snapshot = await get(passwordRef);
-            const storedHash = snapshot.val();
+        async function getPasswordData() {
+            const passwordHashRef = ref(database, 'settings/passwordHash');
+            const passwordSaltRef = ref(database, 'settings/passwordSalt');
+            const hashSnapshot = await get(passwordHashRef);
+            const saltSnapshot = await get(passwordSaltRef);
+            const storedHash = hashSnapshot.val();
+            const storedSalt = saltSnapshot.val();
             
             // If no password hash exists, initialize with default password "byrnecut2025"
             if (!storedHash) {
                 const defaultPassword = 'byrnecut2025';
-                const defaultHash = await hashPassword(defaultPassword);
-                await set(passwordRef, defaultHash);
-                return defaultHash;
+                const salt = generateSalt();
+                const hash = await hashPassword(defaultPassword, salt);
+                await set(passwordHashRef, hash);
+                await set(passwordSaltRef, salt);
+                return { hash, salt };
             }
             
-            return storedHash;
+            // If salt doesn't exist but hash does (migration from old system)
+            if (!storedSalt && storedHash) {
+                // Try to verify with old unsalted hash for backward compatibility
+                // Then migrate to salted on next password change
+                return { hash: storedHash, salt: null, needsMigration: true };
+            }
+            
+            return { hash: storedHash, salt: storedSalt };
         }
         
         async function updatePasswordHash(newPassword) {
-            const hash = await hashPassword(newPassword);
+            const salt = generateSalt();
+            const hash = await hashPassword(newPassword, salt);
             await set(ref(database, 'settings/passwordHash'), hash);
+            await set(ref(database, 'settings/passwordSalt'), salt);
+        }
+        
+        // Backward compatibility wrapper
+        async function getPasswordHash() {
+            const data = await getPasswordData();
+            return data.hash;
         }
         
         // Rate Limiting Functions
@@ -524,6 +557,25 @@
             return div.innerHTML;
         }
         
+        // Escape JavaScript string for use in HTML attributes (prevents XSS)
+        function escapeJsString(str) {
+            if (typeof str !== 'string') return '';
+            return str
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r')
+                .replace(/\t/g, '\\t');
+        }
+        
+        // Validate question ID format (Firebase keys are alphanumeric with some special chars)
+        function isValidQuestionId(id) {
+            if (typeof id !== 'string' || id.length === 0 || id.length > 256) return false;
+            // Firebase Realtime Database keys can contain: a-z, A-Z, 0-9, -, _, ., $, [, ], #
+            return /^[a-zA-Z0-9\-_\.\$\[\]#]+$/.test(id);
+        }
+        
         // AUDIENCE VIEW
         async function renderAudienceView() {
             const sessionOpen = await isSessionOpen();
@@ -562,8 +614,8 @@
                     <div class="content">
                         <form class="question-form" id="questionForm">
                             <div class="form-group">
-                                <label for="name">Your Name (Optional)</label>
-                                <input type="text" id="name" placeholder="Anonymous">
+                                <label for="name">Your Name (Optional, Max ${MAX_NAME_LENGTH} characters)</label>
+                                <input type="text" id="name" placeholder="Anonymous" maxlength="${MAX_NAME_LENGTH}">
                             </div>
                             <div class="form-group">
                                 <label for="question">Your Question * (Max ${MAX_QUESTION_LENGTH} characters)</label>
@@ -595,13 +647,26 @@
                 
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
-                const name = document.getElementById('name').value.trim() || 'Anonymous';
+                const nameInput = document.getElementById('name').value.trim() || 'Anonymous';
                 const questionText = document.getElementById('question').value.trim();
+                
+                // Validate input lengths
+                if (nameInput.length > MAX_NAME_LENGTH) {
+                    messageDiv.innerHTML = '<div class="error-message">Name is too long.</div>';
+                    return;
+                }
+                
+                if (questionText.length === 0) {
+                    messageDiv.innerHTML = '<div class="error-message">Question cannot be empty.</div>';
+                    return;
+                }
                 
                 if (questionText.length > MAX_QUESTION_LENGTH) {
                     messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
                     return;
                 }
+                
+                const name = nameInput;
                 
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
@@ -640,7 +705,7 @@
                         <form class="login-form" id="loginForm">
                             <div class="form-group">
                                 <label for="password">Password</label>
-                                <input type="password" id="password" placeholder="Enter moderator password" required>
+                                <input type="password" id="password" placeholder="Enter moderator password" required maxlength="${MAX_PASSWORD_LENGTH}">
                             </div>
                             <button type="submit">Login</button>
                             <div id="loginMessage"></div>
@@ -652,10 +717,34 @@
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const password = document.getElementById('password').value;
-                const passwordHash = await hashPassword(password);
-                const storedHash = await getPasswordHash();
                 
-                if (passwordHash === storedHash) {
+                // Validate password length
+                if (password.length === 0) {
+                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Password cannot be empty.</div>';
+                    return;
+                }
+                
+                if (password.length > MAX_PASSWORD_LENGTH) {
+                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Password is too long.</div>';
+                    return;
+                }
+                
+                const passwordData = await getPasswordData();
+                
+                // Handle backward compatibility with unsalted hashes
+                let isValid = false;
+                if (passwordData.salt) {
+                    // New salted system
+                    const passwordHash = await hashPassword(password, passwordData.salt);
+                    isValid = passwordHash === passwordData.hash;
+                } else if (passwordData.needsMigration) {
+                    // Old unsalted system - try to verify
+                    const oldHash = await hashPassword(password, ''); // Empty salt for old system
+                    isValid = oldHash === passwordData.hash;
+                    // If valid, migrate to salted on next password change
+                }
+                
+                if (isValid) {
                     sessionStorage.setItem('moderatorAuth', 'true');
                     renderModeratorView();
                 } else {
@@ -700,6 +789,7 @@
                             <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
                             <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
                             <button onclick="window.filterQuestions('approved')" id="filterApproved">Approved</button>
+                            <button onclick="window.filterQuestions('answered')" id="filterAnswered">Answered</button>
                         </div>
                         <div id="questionList" class="question-list">
                             <div class="loading">Loading questions...</div>
@@ -719,6 +809,15 @@
                 allQuestions = snapshot.val() || {};
                 displayQuestions();
             });
+            
+            // Highlight initial filter button
+            setTimeout(() => {
+                const initialFilterBtn = document.getElementById('filterAll');
+                if (initialFilterBtn) {
+                    initialFilterBtn.style.opacity = '0.8';
+                    initialFilterBtn.style.fontWeight = '700';
+                }
+            }, 100);
         }
         
         function updateSessionUI() {
@@ -802,15 +901,15 @@
                 <form id="changePasswordForm" style="margin-top: 20px;">
                     <div class="form-group">
                         <label for="currentPassword">Current Password</label>
-                        <input type="password" id="currentPassword" required style="width: 100%; margin-bottom: 15px;">
+                        <input type="password" id="currentPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div class="form-group">
-                        <label for="newPassword">New Password (min 8 characters)</label>
-                        <input type="password" id="newPassword" required style="width: 100%; margin-bottom: 15px;">
+                        <label for="newPassword">New Password (${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters)</label>
+                        <input type="password" id="newPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div class="form-group">
                         <label for="confirmPassword">Confirm New Password</label>
-                        <input type="password" id="confirmPassword" required style="width: 100%; margin-bottom: 15px;">
+                        <input type="password" id="confirmPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div id="changePasswordMessage"></div>
                     <div class="modal-buttons">
@@ -831,8 +930,19 @@
                 const newPassword = document.getElementById('newPassword').value;
                 const confirmPassword = document.getElementById('confirmPassword').value;
 
-                if (newPassword.length < 8) {
-                    message.innerHTML = '<div class="error-message">New password must be at least 8 characters.</div>';
+                // Validate password lengths
+                if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) {
+                    message.innerHTML = '<div class="error-message">Current password is invalid.</div>';
+                    return;
+                }
+
+                if (newPassword.length < MIN_PASSWORD_LENGTH) {
+                    message.innerHTML = `<div class="error-message">New password must be at least ${MIN_PASSWORD_LENGTH} characters.</div>`;
+                    return;
+                }
+
+                if (newPassword.length > MAX_PASSWORD_LENGTH) {
+                    message.innerHTML = `<div class="error-message">New password must be no more than ${MAX_PASSWORD_LENGTH} characters.</div>`;
                     return;
                 }
 
@@ -842,13 +952,26 @@
                 }
 
                 try {
-                    const currentHash = await hashPassword(currentPassword);
-                    const storedHash = await getPasswordHash();
-                    if (currentHash !== storedHash) {
+                    const passwordData = await getPasswordData();
+                    
+                    // Verify current password with salted or unsalted hash
+                    let isValid = false;
+                    if (passwordData.salt) {
+                        // New salted system
+                        const currentHash = await hashPassword(currentPassword, passwordData.salt);
+                        isValid = currentHash === passwordData.hash;
+                    } else if (passwordData.needsMigration) {
+                        // Old unsalted system - verify and will migrate on update
+                        const oldHash = await hashPassword(currentPassword, '');
+                        isValid = oldHash === passwordData.hash;
+                    }
+                    
+                    if (!isValid) {
                         message.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
                         return;
                     }
 
+                    // Update password (will use new salted system)
                     await updatePasswordHash(newPassword);
                     message.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
                     setTimeout(() => window.closeModal(), 1200);
@@ -860,21 +983,67 @@
 
         // Question moderation actions
         window.filterQuestions = (filter) => {
-            currentFilter = filter;
-            displayQuestions();
+            // Validate filter value to prevent injection
+            const validFilters = ['all', 'pending', 'approved', 'answered'];
+            if (validFilters.includes(filter)) {
+                currentFilter = filter;
+                
+                // Update button highlighting
+                ['filterAll', 'filterPending', 'filterApproved', 'filterAnswered'].forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        btn.style.opacity = '1';
+                        btn.style.fontWeight = 'normal';
+                    }
+                });
+                
+                const activeBtnMap = {
+                    'all': 'filterAll',
+                    'pending': 'filterPending',
+                    'approved': 'filterApproved',
+                    'answered': 'filterAnswered'
+                };
+                
+                const activeBtn = document.getElementById(activeBtnMap[filter]);
+                if (activeBtn) {
+                    activeBtn.style.opacity = '0.8';
+                    activeBtn.style.fontWeight = '700';
+                }
+                
+                displayQuestions();
+            } else {
+                console.error('Invalid filter value:', filter);
+            }
         };
 
+        // Validate status value
+        function isValidStatus(status) {
+            return ['pending', 'approved', 'answered'].includes(status);
+        }
+
         window.approveQuestion = async (id) => {
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for approval:', id);
+                return;
+            }
             await update(ref(database, `questions/${id}`), { status: 'approved' });
         };
 
         window.rejectQuestion = (id) => {
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for rejection:', id);
+                return;
+            }
             showModal('Reject question', 'This will permanently delete the question. Continue?', async () => {
                 await remove(ref(database, `questions/${id}`));
             });
         };
 
         window.markAnswered = async (id) => {
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for marking answered:', id);
+                return;
+            }
             await update(ref(database, `questions/${id}`), { status: 'answered' });
         };
 
@@ -902,19 +1071,28 @@
             }
 
             list.innerHTML = filtered.map(q => {
-                const status = q.status || 'pending';
+                // Validate status to prevent XSS in class names
+                const rawStatus = q.status || 'pending';
+                const status = isValidStatus(rawStatus) ? rawStatus : 'pending';
                 const safeQuestion = escapeHtml(q.question || '');
                 const safeName = escapeHtml(q.name || 'Anonymous');
                 const date = q.timestamp ? new Date(q.timestamp).toLocaleString() : '';
+                
+                // Validate and escape question ID to prevent XSS
+                if (!isValidQuestionId(q.id)) {
+                    console.error('Invalid question ID:', q.id);
+                    return ''; // Skip invalid questions
+                }
+                const safeId = escapeJsString(q.id);
 
                 const actions = (status === 'pending') ? `
-                    <button class="btn-approve" onclick="window.approveQuestion('${q.id}')">Approve</button>
-                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Reject</button>
+                    <button class="btn-approve" onclick="window.approveQuestion('${safeId}')">Approve</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Reject</button>
                 ` : (status === 'approved') ? `
-                    <button class="btn-answer" onclick="window.markAnswered('${q.id}')">Mark Answered</button>
-                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>
+                    <button class="btn-answer" onclick="window.markAnswered('${safeId}')">Mark Answered</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
                 ` : `
-                    <button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
                 `;
 
                 return `
