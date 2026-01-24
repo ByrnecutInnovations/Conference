@@ -413,7 +413,6 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, push, set, onValue, remove, update, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCoXUndzA5tynEW0LV7_nldit1Jx-wZXVU",
             authDomain: "conference-qa-2375a.firebaseapp.com",
@@ -435,76 +434,30 @@
         const isModerator = urlParams.get('moderator') === 'true';
         const isDisplay = urlParams.get('display') === 'true';
         
-        // Configuration
         const MAX_QUESTION_LENGTH = 500;
-        const MAX_NAME_LENGTH = 100;
-        const MAX_PASSWORD_LENGTH = 128;
-        const MIN_PASSWORD_LENGTH = 8;
         const RATE_LIMIT_MINUTES = 2;
         
-        // Byrnecut logo
         const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
-        // Password Security Functions with Salt
-        function generateSalt() {
-            // Generate a random 32-byte salt
-            const array = new Uint8Array(32);
-            crypto.getRandomValues(array);
-            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-        
-        async function hashPassword(password, salt) {
-            // Combine password and salt, then hash
+        async function hashPassword(password) {
             const encoder = new TextEncoder();
-            const saltedPassword = password + salt;
-            const data = encoder.encode(saltedPassword);
+            const data = encoder.encode(password);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function getPasswordData() {
-            const passwordHashRef = ref(database, 'settings/passwordHash');
-            const passwordSaltRef = ref(database, 'settings/passwordSalt');
-            const hashSnapshot = await get(passwordHashRef);
-            const saltSnapshot = await get(passwordSaltRef);
-            const storedHash = hashSnapshot.val();
-            const storedSalt = saltSnapshot.val();
-            
-            // If no password hash exists, initialize with default password "byrnecut2025"
-            if (!storedHash) {
-                const defaultPassword = 'byrnecut2025';
-                const salt = generateSalt();
-                const hash = await hashPassword(defaultPassword, salt);
-                await set(passwordHashRef, hash);
-                await set(passwordSaltRef, salt);
-                return { hash, salt };
-            }
-            
-            // If salt doesn't exist but hash does (migration from old system)
-            if (!storedSalt && storedHash) {
-                // Try to verify with old unsalted hash for backward compatibility
-                // Then migrate to salted on next password change
-                return { hash: storedHash, salt: null, needsMigration: true };
-            }
-            
-            return { hash: storedHash, salt: storedSalt };
+        async function getPasswordHash() {
+            const passwordRef = ref(database, 'settings/passwordHash');
+            const snapshot = await get(passwordRef);
+            return snapshot.val() || 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
         }
         
         async function updatePasswordHash(newPassword) {
-            const salt = generateSalt();
-            const hash = await hashPassword(newPassword, salt);
+            const hash = await hashPassword(newPassword);
             await set(ref(database, 'settings/passwordHash'), hash);
-            await set(ref(database, 'settings/passwordSalt'), salt);
         }
         
-        // Backward compatibility wrapper
-        async function getPasswordHash() {
-            const data = await getPasswordData();
-            return data.hash;
-        }
-        
-        // Rate Limiting Functions
         function checkRateLimit() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return true;
@@ -524,7 +477,6 @@
             return Math.max(0, Math.ceil(remaining));
         }
         
-        // Modal Functions
         window.closeModal = function() {
             document.getElementById('modal').classList.remove('active');
         };
@@ -542,40 +494,18 @@
             };
         }
         
-        // Session Status
         async function isSessionOpen() {
             const snapshot = await get(settingsRef);
             const settings = snapshot.val();
             return settings?.sessionOpen !== false;
         }
         
-        // Utility Functions
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
         
-        // Escape JavaScript string for use in HTML attributes (prevents XSS)
-        function escapeJsString(str) {
-            if (typeof str !== 'string') return '';
-            return str
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/"/g, '\\"')
-                .replace(/\n/g, '\\n')
-                .replace(/\r/g, '\\r')
-                .replace(/\t/g, '\\t');
-        }
-        
-        // Validate question ID format (Firebase keys are alphanumeric with some special chars)
-        function isValidQuestionId(id) {
-            if (typeof id !== 'string' || id.length === 0 || id.length > 256) return false;
-            // Firebase Realtime Database keys can contain: a-z, A-Z, 0-9, -, _, ., $, [, ], #
-            return /^[a-zA-Z0-9\-_\.\$\[\]#]+$/.test(id);
-        }
-        
-        // AUDIENCE VIEW
         async function renderAudienceView() {
             const sessionOpen = await isSessionOpen();
             
@@ -613,8 +543,8 @@
                     <div class="content">
                         <form class="question-form" id="questionForm">
                             <div class="form-group">
-                                <label for="name">Your Name (Optional, Max ${MAX_NAME_LENGTH} characters)</label>
-                                <input type="text" id="name" placeholder="Anonymous" maxlength="${MAX_NAME_LENGTH}">
+                                <label for="name">Your Name (Optional)</label>
+                                <input type="text" id="name" placeholder="Anonymous">
                             </div>
                             <div class="form-group">
                                 <label for="question">Your Question * (Max ${MAX_QUESTION_LENGTH} characters)</label>
@@ -646,26 +576,13 @@
                 
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
-                const nameInput = document.getElementById('name').value.trim() || 'Anonymous';
+                const name = document.getElementById('name').value.trim() || 'Anonymous';
                 const questionText = document.getElementById('question').value.trim();
-                
-                // Validate input lengths
-                if (nameInput.length > MAX_NAME_LENGTH) {
-                    messageDiv.innerHTML = '<div class="error-message">Name is too long.</div>';
-                    return;
-                }
-                
-                if (questionText.length === 0) {
-                    messageDiv.innerHTML = '<div class="error-message">Question cannot be empty.</div>';
-                    return;
-                }
                 
                 if (questionText.length > MAX_QUESTION_LENGTH) {
                     messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
                     return;
                 }
-                
-                const name = nameInput;
                 
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
@@ -691,7 +608,6 @@
             });
         }
         
-        // MODERATOR LOGIN
         function renderModeratorLogin() {
             appDiv.innerHTML = `
                 <div class="container">
@@ -704,7 +620,7 @@
                         <form class="login-form" id="loginForm">
                             <div class="form-group">
                                 <label for="password">Password</label>
-                                <input type="password" id="password" placeholder="Enter moderator password" required maxlength="${MAX_PASSWORD_LENGTH}">
+                                <input type="password" id="password" placeholder="Enter moderator password" required>
                             </div>
                             <button type="submit">Login</button>
                             <div id="loginMessage"></div>
@@ -716,34 +632,10 @@
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const password = document.getElementById('password').value;
+                const passwordHash = await hashPassword(password);
+                const storedHash = await getPasswordHash();
                 
-                // Validate password length
-                if (password.length === 0) {
-                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Password cannot be empty.</div>';
-                    return;
-                }
-                
-                if (password.length > MAX_PASSWORD_LENGTH) {
-                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Password is too long.</div>';
-                    return;
-                }
-                
-                const passwordData = await getPasswordData();
-                
-                // Handle backward compatibility with unsalted hashes
-                let isValid = false;
-                if (passwordData.salt) {
-                    // New salted system
-                    const passwordHash = await hashPassword(password, passwordData.salt);
-                    isValid = passwordHash === passwordData.hash;
-                } else if (passwordData.needsMigration) {
-                    // Old unsalted system - try to verify
-                    const oldHash = await hashPassword(password, ''); // Empty salt for old system
-                    isValid = oldHash === passwordData.hash;
-                    // If valid, migrate to salted on next password change
-                }
-                
-                if (isValid) {
+                if (passwordHash === storedHash) {
                     sessionStorage.setItem('moderatorAuth', 'true');
                     renderModeratorView();
                 } else {
@@ -752,12 +644,19 @@
             });
         }
         
-        // MODERATOR VIEW
         let currentFilter = 'all';
         let allQuestions = {};
         let sessionOpen = true;
         
         async function renderModeratorView() {
+            // Check session timeout
+            if (checkSessionTimeout()) {
+                showModal('Session Expired', 'Your session has expired due to inactivity. Please log in again.', () => {
+                    renderModeratorLogin();
+                });
+                return;
+            }
+            
             if (sessionStorage.getItem('moderatorAuth') !== 'true') {
                 renderModeratorLogin();
                 return;
@@ -788,7 +687,6 @@
                             <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
                             <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
                             <button onclick="window.filterQuestions('approved')" id="filterApproved">Approved</button>
-                            <button onclick="window.filterQuestions('answered')" id="filterAnswered">Answered</button>
                         </div>
                         <div id="questionList" class="question-list">
                             <div class="loading">Loading questions...</div>
@@ -797,26 +695,15 @@
                 </div>
             `;
             
-            // Listen for session status changes
             onValue(settingsRef, (snapshot) => {
                 sessionOpen = snapshot.val()?.sessionOpen !== false;
                 updateSessionUI();
             });
             
-            // Listen for question updates
             onValue(questionsRef, (snapshot) => {
                 allQuestions = snapshot.val() || {};
                 displayQuestions();
             });
-            
-            // Highlight initial filter button
-            setTimeout(() => {
-                const initialFilterBtn = document.getElementById('filterAll');
-                if (initialFilterBtn) {
-                    initialFilterBtn.style.opacity = '0.8';
-                    initialFilterBtn.style.fontWeight = '700';
-                }
-            }, 100);
         }
         
         function updateSessionUI() {
@@ -845,9 +732,7 @@
         };
         
         window.toggleSession = async () => {
-            // Update only the sessionOpen field to preserve other settings like passwordHash
-            const sessionOpenRef = ref(database, 'settings/sessionOpen');
-            await set(sessionOpenRef, !sessionOpen);
+            await set(settingsRef, { sessionOpen: !sessionOpen });
         };
         
         window.archiveAndClear = () => {
@@ -900,296 +785,27 @@
                 <form id="changePasswordForm" style="margin-top: 20px;">
                     <div class="form-group">
                         <label for="currentPassword">Current Password</label>
-                        <input type="password" id="currentPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
+                        <input type="password" id="currentPassword" required style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div class="form-group">
-                        <label for="newPassword">New Password (${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters)</label>
-                        <input type="password" id="newPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
+                        <label for="newPassword">New Password (min 8 characters)</label>
+                        <input type="password" id="newPassword" required style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div class="form-group">
                         <label for="confirmPassword">Confirm New Password</label>
-                        <input type="password" id="confirmPassword" required maxlength="${MAX_PASSWORD_LENGTH}" style="width: 100%; margin-bottom: 15px;">
+                        <input type="password" id="confirmPassword" required style="width: 100%; margin-bottom: 15px;">
                     </div>
-                    <div id="changePasswordMessage"></div>
+                    <div id="passwordMessage" style="margin-bottom: 15px;"></div>
                     <div class="modal-buttons">
-                        <button type="button" class="btn-secondary" onclick="window.closeModal()">Cancel</button>
+                        <button type="button" onclick="window.closeModal()" class="btn-secondary">Cancel</button>
                         <button type="submit" class="btn-success">Update Password</button>
                     </div>
                 </form>
             `;
-
             modal.classList.add('active');
-
+            
             document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const message = document.getElementById('changePasswordMessage');
-                message.innerHTML = '';
-
+                const messageDiv = document.getElementById('passwordMessage');
                 const currentPassword = document.getElementById('currentPassword').value;
-                const newPassword = document.getElementById('newPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-
-                // Validate password lengths
-                if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) {
-                    message.innerHTML = '<div class="error-message">Current password is invalid.</div>';
-                    return;
-                }
-
-                if (newPassword.length < MIN_PASSWORD_LENGTH) {
-                    message.innerHTML = `<div class="error-message">New password must be at least ${MIN_PASSWORD_LENGTH} characters.</div>`;
-                    return;
-                }
-
-                if (newPassword.length > MAX_PASSWORD_LENGTH) {
-                    message.innerHTML = `<div class="error-message">New password must be no more than ${MAX_PASSWORD_LENGTH} characters.</div>`;
-                    return;
-                }
-
-                if (newPassword !== confirmPassword) {
-                    message.innerHTML = '<div class="error-message">New password and confirmation do not match.</div>';
-                    return;
-                }
-
-                try {
-                    const passwordData = await getPasswordData();
-                    
-                    // Verify current password with salted or unsalted hash
-                    let isValid = false;
-                    if (passwordData.salt) {
-                        // New salted system
-                        const currentHash = await hashPassword(currentPassword, passwordData.salt);
-                        isValid = currentHash === passwordData.hash;
-                    } else if (passwordData.needsMigration) {
-                        // Old unsalted system - verify and will migrate on update
-                        const oldHash = await hashPassword(currentPassword, '');
-                        isValid = oldHash === passwordData.hash;
-                    }
-                    
-                    if (!isValid) {
-                        message.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
-                        return;
-                    }
-
-                    // Update password (will use new salted system)
-                    await updatePasswordHash(newPassword);
-                    message.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
-                    setTimeout(() => window.closeModal(), 1200);
-                } catch (err) {
-                    message.innerHTML = '<div class="error-message">Error updating password.</div>';
-                }
-            });
-        };
-
-        // Question moderation actions
-        window.filterQuestions = (filter) => {
-            // Validate filter value to prevent injection
-            const validFilters = ['all', 'pending', 'approved', 'answered'];
-            if (validFilters.includes(filter)) {
-                currentFilter = filter;
-                
-                // Update button highlighting
-                ['filterAll', 'filterPending', 'filterApproved', 'filterAnswered'].forEach(btnId => {
-                    const btn = document.getElementById(btnId);
-                    if (btn) {
-                        btn.style.opacity = '1';
-                        btn.style.fontWeight = 'normal';
-                    }
-                });
-                
-                const activeBtnMap = {
-                    'all': 'filterAll',
-                    'pending': 'filterPending',
-                    'approved': 'filterApproved',
-                    'answered': 'filterAnswered'
-                };
-                
-                const activeBtn = document.getElementById(activeBtnMap[filter]);
-                if (activeBtn) {
-                    activeBtn.style.opacity = '0.8';
-                    activeBtn.style.fontWeight = '700';
-                }
-                
-                displayQuestions();
-            } else {
-                console.error('Invalid filter value:', filter);
-            }
-        };
-
-        // Validate status value
-        function isValidStatus(status) {
-            return ['pending', 'approved', 'answered'].includes(status);
-        }
-
-        window.approveQuestion = async (id) => {
-            if (!isValidQuestionId(id)) {
-                console.error('Invalid question ID for approval:', id);
-                return;
-            }
-            await update(ref(database, `questions/${id}`), { status: 'approved' });
-        };
-
-        window.rejectQuestion = (id) => {
-            if (!isValidQuestionId(id)) {
-                console.error('Invalid question ID for rejection:', id);
-                return;
-            }
-            showModal('Reject question', 'This will permanently delete the question. Continue?', async () => {
-                await remove(ref(database, `questions/${id}`));
-            });
-        };
-
-        window.markAnswered = async (id) => {
-            if (!isValidQuestionId(id)) {
-                console.error('Invalid question ID for marking answered:', id);
-                return;
-            }
-            await update(ref(database, `questions/${id}`), { status: 'answered' });
-        };
-
-        function displayQuestions() {
-            const list = document.getElementById('questionList');
-            if (!list) return;
-
-            const entries = Object.entries(allQuestions || {})
-                .map(([id, q]) => ({ id, ...(q || {}) }))
-                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-            const filtered = entries.filter(q => currentFilter === 'all' || q.status === currentFilter);
-
-            if (filtered.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <h3>No questions</h3>
-                        <p>Nothing to show for this filter.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            list.innerHTML = filtered.map(q => {
-                // Validate status to prevent XSS in class names
-                const rawStatus = q.status || 'pending';
-                const status = isValidStatus(rawStatus) ? rawStatus : 'pending';
-                const safeQuestion = escapeHtml(q.question || '');
-                const safeName = escapeHtml(q.name || 'Anonymous');
-                const date = q.timestamp ? new Date(q.timestamp).toLocaleString() : '';
-                
-                // Validate and escape question ID to prevent XSS
-                if (!isValidQuestionId(q.id)) {
-                    console.error('Invalid question ID:', q.id);
-                    return ''; // Skip invalid questions
-                }
-                const safeId = escapeJsString(q.id);
-
-                const actions = (status === 'pending') ? `
-                    <button class="btn-approve" onclick="window.approveQuestion('${safeId}')">Approve</button>
-                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Reject</button>
-                ` : (status === 'approved') ? `
-                    <button class="btn-answer" onclick="window.markAnswered('${safeId}')">Mark Answered</button>
-                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
-                ` : `
-                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
-                `;
-
-                return `
-                    <div class="question-card ${status}">
-                        <div class="question-header">
-                            <div class="question-meta">${date}</div>
-                            <span class="question-status status-${status}">${status}</span>
-                        </div>
-                        <div class="question-text">${safeQuestion}</div>
-                        <div class="question-name">— ${safeName}</div>
-                        <div class="question-actions">${actions}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // DISPLAY VIEW (big screen)
-        function renderDisplayView() {
-            document.body.style.padding = '0';
-            document.body.style.background = '#2D2D2D';
-
-            appDiv.innerHTML = `
-                <div class="display-view">
-                    <div class="display-container">
-                        <div class="display-header">
-                            <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
-                            <div class="display-title">Q&A</div>
-                        </div>
-                        <div id="displayQuestions"></div>
-                    </div>
-                </div>
-            `;
-
-            const host = document.getElementById('displayQuestions');
-            host.innerHTML = '<div class="loading">Loading questions...</div>';
-
-            onValue(questionsRef, (snapshot) => {
-                const data = snapshot.val() || {};
-                const approved = Object.entries(data)
-                    .map(([id, q]) => ({ id, ...(q || {}) }))
-                    .filter(q => q.status === 'approved')
-                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-                if (approved.length === 0) {
-                    host.innerHTML = `
-                        <div class="display-question">
-                            <div class="display-question-text">No approved questions yet.</div>
-                            <div class="display-question-name">Waiting for moderator…</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                host.innerHTML = approved.map(q => `
-                    <div class="display-question">
-                        <div class="display-question-text">${escapeHtml(q.question || '')}</div>
-                        <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
-                    </div>
-                `).join('');
-            });
-        }
-
-        function renderFatalError(message, err) {
-            const details = err ? (err.stack || err.message || String(err)) : '';
-            appDiv.innerHTML = `
-                <div class="container">
-                    <div class="header">
-                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
-                        <h1>App error</h1>
-                        <p>Something prevented the page from loading.</p>
-                    </div>
-                    <div class="content">
-                        <div class="error-message">${escapeHtml(message || 'Unknown error')}</div>
-                        ${details ? `<pre style="white-space: pre-wrap; margin-top: 12px; font-size: 12px; color: #444;">${escapeHtml(details)}</pre>` : ''}
-                        <div class="info-message" style="margin-top: 12px;">
-                            If you opened this via <b>file://</b>, Firebase modules may not load. Use a local web server (e.g. VS Code Live Server).
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // App bootstrap / routing
-        async function bootstrap() {
-            if (!appDiv) return;
-            if (isDisplay) return renderDisplayView();
-            if (isModerator) return renderModeratorView();
-            return renderAudienceView();
-        }
-
-        window.addEventListener('error', (e) => {
-            renderFatalError('Uncaught error', e.error || e.message);
-        });
-        window.addEventListener('unhandledrejection', (e) => {
-            renderFatalError('Unhandled promise rejection', e.reason);
-        });
-
-        bootstrap().catch((err) => renderFatalError('Failed to start app', err));
-    </script>
-</body>
-</html>
+                const newPasswor
