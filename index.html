@@ -436,28 +436,72 @@
         
         const MAX_QUESTION_LENGTH = 500;
         const RATE_LIMIT_MINUTES = 2;
+        const SESSION_TIMEOUT_MINUTES = 30;
+        const MIN_PASSWORD_LENGTH = 8;
+        const MAX_PASSWORD_LENGTH = 128;
         
         const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
-        async function hashPassword(password) {
+        // Session timeout management
+        function updateLastActivity() {
+            sessionStorage.setItem('lastActivity', Date.now().toString());
+        }
+        
+        function checkSessionTimeout() {
+            const lastActivity = sessionStorage.getItem('lastActivity');
+            if (!lastActivity) {
+                updateLastActivity();
+                return false;
+            }
+            const timeSince = Date.now() - parseInt(lastActivity);
+            const minutesSince = timeSince / (1000 * 60);
+            if (minutesSince >= SESSION_TIMEOUT_MINUTES) {
+                sessionStorage.removeItem('moderatorAuth');
+                sessionStorage.removeItem('lastActivity');
+                return true;
+            }
+            updateLastActivity();
+            return false;
+        }
+        
+        // Password management
+        async function hashPassword(password, salt = '') {
             const encoder = new TextEncoder();
-            const data = encoder.encode(password);
+            const data = encoder.encode(password + salt);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function getPasswordHash() {
-            const passwordRef = ref(database, 'settings/passwordHash');
-            const snapshot = await get(passwordRef);
-            return snapshot.val() || 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+        function generateSalt() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        async function getPasswordData() {
+            const snapshot = await get(ref(database, 'settings/password'));
+            const data = snapshot.val();
+            
+            if (!data || !data.hash) {
+                const defaultHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+                return { hash: defaultHash, salt: null, needsMigration: true };
+            }
+            
+            return {
+                hash: data.hash,
+                salt: data.salt || null,
+                needsMigration: !data.salt
+            };
         }
         
         async function updatePasswordHash(newPassword) {
-            const hash = await hashPassword(newPassword);
-            await set(ref(database, 'settings/passwordHash'), hash);
+            const salt = generateSalt();
+            const hash = await hashPassword(newPassword, salt);
+            await set(ref(database, 'settings/password'), { hash, salt });
         }
         
+        // Rate limiting
         function checkRateLimit() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return true;
@@ -477,6 +521,7 @@
             return Math.max(0, Math.ceil(remaining));
         }
         
+        // Modal management
         window.closeModal = function() {
             document.getElementById('modal').classList.remove('active');
         };
@@ -506,6 +551,15 @@
             return div.innerHTML;
         }
         
+        function escapeJsString(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+        
+        function isValidQuestionId(id) {
+            return typeof id === 'string' && id.length > 0 && id.length < 200 && /^[a-zA-Z0-9_-]+$/.test(id);
+        }
+        
+        // Audience view
         async function renderAudienceView() {
             const sessionOpen = await isSessionOpen();
             
@@ -608,6 +662,7 @@
             });
         }
         
+        // Moderator login
         function renderModeratorLogin() {
             appDiv.innerHTML = `
                 <div class="container">
@@ -632,11 +687,20 @@
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const password = document.getElementById('password').value;
-                const passwordHash = await hashPassword(password);
-                const storedHash = await getPasswordHash();
+                const passwordData = await getPasswordData();
                 
-                if (passwordHash === storedHash) {
+                let isValid = false;
+                if (passwordData.salt) {
+                    const hash = await hashPassword(password, passwordData.salt);
+                    isValid = hash === passwordData.hash;
+                } else {
+                    const hash = await hashPassword(password, '');
+                    isValid = hash === passwordData.hash;
+                }
+                
+                if (isValid) {
                     sessionStorage.setItem('moderatorAuth', 'true');
+                    updateLastActivity();
                     renderModeratorView();
                 } else {
                     document.getElementById('loginMessage').innerHTML = '<div class="error-message">Incorrect password</div>';
@@ -648,8 +712,8 @@
         let allQuestions = {};
         let sessionOpen = true;
         
+        // Moderator view
         async function renderModeratorView() {
-            // Check session timeout
             if (checkSessionTimeout()) {
                 showModal('Session Expired', 'Your session has expired due to inactivity. Please log in again.', () => {
                     renderModeratorLogin();
@@ -661,6 +725,8 @@
                 renderModeratorLogin();
                 return;
             }
+            
+            updateLastActivity();
             
             appDiv.innerHTML = `
                 <div class="container">
@@ -728,14 +794,17 @@
         
         window.logout = () => {
             sessionStorage.removeItem('moderatorAuth');
+            sessionStorage.removeItem('lastActivity');
             renderModeratorLogin();
         };
         
         window.toggleSession = async () => {
+            updateLastActivity();
             await set(settingsRef, { sessionOpen: !sessionOpen });
         };
         
         window.archiveAndClear = () => {
+            updateLastActivity();
             showModal('Archive and Clear All Questions',
                 'This will save all questions to archive and clear the active session. Continue?',
                 async () => {
@@ -753,6 +822,7 @@
         };
         
         window.downloadQuestions = () => {
+            updateLastActivity();
             const questions = Object.entries(allQuestions).map(([id, data]) => ({
                 ...data,
                 date: new Date(data.timestamp).toISOString()
@@ -778,6 +848,7 @@
         };
         
         window.showChangePassword = () => {
+            updateLastActivity();
             const modal = document.getElementById('modal');
             const modalContent = modal.querySelector('.modal-content');
             modalContent.innerHTML = `
@@ -811,65 +882,62 @@
                 const newPassword = document.getElementById('newPassword').value;
                 const confirmPassword = document.getElementById('confirmPassword').value;
 
-                // Validate password lengths
                 if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) {
-                    message.innerHTML = '<div class="error-message">Current password is invalid.</div>';
+                    messageDiv.innerHTML = '<div class="error-message">Current password is invalid.</div>';
                     return;
                 }
 
                 if (newPassword.length < MIN_PASSWORD_LENGTH) {
-                    message.innerHTML = `<div class="error-message">New password must be at least ${MIN_PASSWORD_LENGTH} characters.</div>`;
+                    messageDiv.innerHTML = `<div class="error-message">New password must be at least ${MIN_PASSWORD_LENGTH} characters.</div>`;
                     return;
                 }
 
                 if (newPassword.length > MAX_PASSWORD_LENGTH) {
-                    message.innerHTML = `<div class="error-message">New password must be no more than ${MAX_PASSWORD_LENGTH} characters.</div>`;
+                    messageDiv.innerHTML = `<div class="error-message">New password must be no more than ${MAX_PASSWORD_LENGTH} characters.</div>`;
                     return;
                 }
 
                 if (newPassword !== confirmPassword) {
-                    message.innerHTML = '<div class="error-message">New password and confirmation do not match.</div>';
+                    messageDiv.innerHTML = '<div class="error-message">New password and confirmation do not match.</div>';
                     return;
                 }
 
                 try {
                     const passwordData = await getPasswordData();
                     
-                    // Verify current password with salted or unsalted hash
                     let isValid = false;
                     if (passwordData.salt) {
-                        // New salted system
                         const currentHash = await hashPassword(currentPassword, passwordData.salt);
                         isValid = currentHash === passwordData.hash;
                     } else if (passwordData.needsMigration) {
-                        // Old unsalted system - verify and will migrate on update
                         const oldHash = await hashPassword(currentPassword, '');
                         isValid = oldHash === passwordData.hash;
                     }
                     
                     if (!isValid) {
-                        message.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
+                        messageDiv.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
                         return;
                     }
 
-                    // Update password (will use new salted system)
                     await updatePasswordHash(newPassword);
-                    message.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
+                    messageDiv.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
                     setTimeout(() => window.closeModal(), 1200);
                 } catch (err) {
-                    message.innerHTML = '<div class="error-message">Error updating password.</div>';
+                    messageDiv.innerHTML = '<div class="error-message">Error updating password.</div>';
                 }
             });
         };
 
-        // Question moderation actions
+        function isValidStatus(status) {
+            return ['pending', 'approved', 'answered'].includes(status);
+        }
+
         window.filterQuestions = (filter) => {
-            // Validate filter value to prevent injection
+            updateLastActivity();
             const validFilters = ['all', 'pending', 'approved', 'answered'];
             if (validFilters.includes(filter)) {
                 currentFilter = filter;
                 
-                // Update button highlighting
                 ['filterAll', 'filterPending', 'filterApproved', 'filterAnswered'].forEach(btnId => {
                     const btn = document.getElementById(btnId);
                     if (btn) {
@@ -897,12 +965,8 @@
             }
         };
 
-        // Validate status value
-        function isValidStatus(status) {
-            return ['pending', 'approved', 'answered'].includes(status);
-        }
-
         window.approveQuestion = async (id) => {
+            updateLastActivity();
             if (!isValidQuestionId(id)) {
                 console.error('Invalid question ID for approval:', id);
                 return;
@@ -911,6 +975,7 @@
         };
 
         window.rejectQuestion = (id) => {
+            updateLastActivity();
             if (!isValidQuestionId(id)) {
                 console.error('Invalid question ID for rejection:', id);
                 return;
@@ -921,6 +986,7 @@
         };
 
         window.markAnswered = async (id) => {
+            updateLastActivity();
             if (!isValidQuestionId(id)) {
                 console.error('Invalid question ID for marking answered:', id);
                 return;
@@ -952,17 +1018,15 @@
             }
 
             list.innerHTML = filtered.map(q => {
-                // Validate status to prevent XSS in class names
                 const rawStatus = q.status || 'pending';
                 const status = isValidStatus(rawStatus) ? rawStatus : 'pending';
                 const safeQuestion = escapeHtml(q.question || '');
                 const safeName = escapeHtml(q.name || 'Anonymous');
                 const date = q.timestamp ? new Date(q.timestamp).toLocaleString() : '';
                 
-                // Validate and escape question ID to prevent XSS
                 if (!isValidQuestionId(q.id)) {
                     console.error('Invalid question ID:', q.id);
-                    return ''; // Skip invalid questions
+                    return '';
                 }
                 const safeId = escapeJsString(q.id);
 
@@ -990,7 +1054,6 @@
             }).join('');
         }
 
-        // DISPLAY VIEW (big screen)
         function renderDisplayView() {
             document.body.style.padding = '0';
             document.body.style.background = '#2D2D2D';
@@ -1056,7 +1119,6 @@
             `;
         }
 
-        // App bootstrap / routing
         async function bootstrap() {
             if (!appDiv) return;
             if (isDisplay) return renderDisplayView();
@@ -1075,4 +1137,3 @@
     </script>
 </body>
 </html>
-
