@@ -675,9 +675,9 @@
                         <form class="login-form" id="loginForm">
                             <div class="form-group">
                                 <label for="password">Password</label>
-                                <input type="password" id="password" placeholder="Enter moderator password" required>
+                                <input type="password" id="password" placeholder="Enter moderator password (default: 123)" required>
                             </div>
-                            <button type="submit">Login</button>
+                            <button type="submit" id="loginBtn">Login</button>
                             <div id="loginMessage"></div>
                         </form>
                     </div>
@@ -686,24 +686,43 @@
             
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                const loginBtn = document.getElementById('loginBtn');
+                const messageDiv = document.getElementById('loginMessage');
                 const password = document.getElementById('password').value;
-                const passwordData = await getPasswordData();
                 
-                let isValid = false;
-                if (passwordData.salt) {
-                    const hash = await hashPassword(password, passwordData.salt);
-                    isValid = hash === passwordData.hash;
-                } else {
-                    const hash = await hashPassword(password, '');
-                    isValid = hash === passwordData.hash;
-                }
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Logging in...';
+                messageDiv.innerHTML = '';
                 
-                if (isValid) {
-                    sessionStorage.setItem('moderatorAuth', 'true');
-                    updateLastActivity();
-                    renderModeratorView();
-                } else {
-                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Incorrect password</div>';
+                try {
+                    const passwordData = await getPasswordData();
+                    console.log('Password data retrieved:', { hasHash: !!passwordData.hash, hasSalt: !!passwordData.salt });
+                    
+                    let isValid = false;
+                    if (passwordData.salt) {
+                        const hash = await hashPassword(password, passwordData.salt);
+                        isValid = hash === passwordData.hash;
+                        console.log('Checking with salt - Valid:', isValid);
+                    } else {
+                        const hash = await hashPassword(password, '');
+                        isValid = hash === passwordData.hash;
+                        console.log('Checking without salt - Valid:', isValid);
+                    }
+                    
+                    if (isValid) {
+                        sessionStorage.setItem('moderatorAuth', 'true');
+                        updateLastActivity();
+                        renderModeratorView();
+                    } else {
+                        messageDiv.innerHTML = '<div class="error-message">Incorrect password. Default password is "123"</div>';
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Login';
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    messageDiv.innerHTML = `<div class="error-message">Login error: ${error.message}. Check console for details.</div>`;
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
                 }
             });
         }
