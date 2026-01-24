@@ -747,8 +747,9 @@
         };
         
         window.toggleSession = async () => {
-            // Use update so we don't overwrite other settings like passwordHash
-            await update(settingsRef, { sessionOpen: !sessionOpen });
+            // Update only the sessionOpen field to preserve other settings like passwordHash
+            const sessionOpenRef = ref(database, 'settings/sessionOpen');
+            await set(sessionOpenRef, !sessionOpen);
         };
         
         window.archiveAndClear = () => {
