@@ -893,7 +893,7 @@
                 <h2>Change Moderator Password</h2>
                 <form id="changePasswordForm" style="margin-top: 20px;">
                     <div class="form-group">
-                        <label for="currentPassword">Current Password</label>
+                        <label for="currentPassword">Current Password (to verify)</label>
                         <input type="password" id="currentPassword" required style="width: 100%; margin-bottom: 15px;">
                     </div>
                     <div class="form-group">
@@ -907,7 +907,7 @@
                     <div id="passwordMessage" style="margin-bottom: 15px;"></div>
                     <div class="modal-buttons">
                         <button type="button" onclick="window.closeModal()" class="btn-secondary">Cancel</button>
-                        <button type="submit" class="btn-success">Update Password</button>
+                        <button type="submit" class="btn-success">Generate Hash</button>
                     </div>
                 </form>
             `;
@@ -943,6 +943,7 @@
                 try {
                     const passwordData = await getPasswordData();
                     
+                    // Verify current password
                     let isValid = false;
                     if (passwordData.salt) {
                         const currentHash = await hashPassword(currentPassword, passwordData.salt);
@@ -957,11 +958,48 @@
                         return;
                     }
 
-                    await updatePasswordHash(newPassword);
-                    messageDiv.innerHTML = '<div class="success-message">✓ Password updated successfully.</div>';
-                    setTimeout(() => window.closeModal(), 1200);
+                    // Generate new hash and salt
+                    const newSalt = generateSalt();
+                    const newHash = await hashPassword(newPassword, newSalt);
+                    
+                    // Display the hash and salt for manual entry
+                    modalContent.innerHTML = `
+                        <h2>Password Hash Generated</h2>
+                        <p style="margin: 15px 0; color: #155724; background: #d4edda; padding: 10px; border-radius: 5px;">
+                            ✓ Current password verified successfully
+                        </p>
+                        <p style="margin: 15px 0; font-weight: 600;">Copy these values into Firebase Console:</p>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Hash:</label>
+                            <textarea readonly id="hashValue" style="width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 10px; margin-bottom: 5px;">${newHash}</textarea>
+                            <button type="button" onclick="navigator.clipboard.writeText('${newHash}').then(() => alert('Hash copied!'))" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">Copy Hash</button>
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Salt:</label>
+                            <textarea readonly id="saltValue" style="width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 10px; margin-bottom: 5px;">${newSalt}</textarea>
+                            <button type="button" onclick="navigator.clipboard.writeText('${newSalt}').then(() => alert('Salt copied!'))" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">Copy Salt</button>
+                        </div>
+                        
+                        <div style="margin: 20px 0; padding: 15px; background: #d1ecf1; border-left: 4px solid #0c5460; font-size: 13px;">
+                            <strong>Instructions:</strong>
+                            <ol style="margin: 10px 0; padding-left: 20px;">
+                                <li>Go to <strong>Firebase Console → Realtime Database</strong></li>
+                                <li>Navigate to <strong>settings → password</strong></li>
+                                <li>Update the <strong>hash</strong> field with the hash above</li>
+                                <li>Update the <strong>salt</strong> field with the salt above</li>
+                                <li>Your new password will be active immediately</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button type="button" onclick="window.closeModal()" class="btn-success">Done</button>
+                        </div>
+                    `;
                 } catch (err) {
-                    messageDiv.innerHTML = '<div class="error-message">Error updating password.</div>';
+                    messageDiv.innerHTML = '<div class="error-message">Error generating password hash.</div>';
+                    console.error('Password generation error:', err);
                 }
             });
         };
