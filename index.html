@@ -480,18 +480,21 @@
         }
         
         async function getPasswordData() {
-            const snapshot = await get(ref(database, 'settings/password'));
-            const data = snapshot.val();
+            const hashSnapshot = await get(ref(database, 'settings/passwordHash'));
+            const saltSnapshot = await get(ref(database, 'settings/passwordSalt'));
             
-            if (!data || !data.hash) {
+            const hash = hashSnapshot.val();
+            const salt = saltSnapshot.val();
+            
+            if (!hash) {
                 const defaultHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
                 return { hash: defaultHash, salt: null, needsMigration: true };
             }
             
             return {
-                hash: data.hash,
-                salt: data.salt || null,
-                needsMigration: !data.salt
+                hash: hash,
+                salt: salt || null,
+                needsMigration: !salt
             };
         }
         
@@ -986,9 +989,9 @@
                             <strong>Instructions:</strong>
                             <ol style="margin: 10px 0; padding-left: 20px;">
                                 <li>Go to <strong>Firebase Console → Realtime Database</strong></li>
-                                <li>Navigate to <strong>settings → password</strong></li>
-                                <li>Update the <strong>hash</strong> field with the hash above</li>
-                                <li>Update the <strong>salt</strong> field with the salt above</li>
+                                <li>Navigate to <strong>settings</strong></li>
+                                <li>Update (or create) <strong>passwordHash</strong> field with the hash above</li>
+                                <li>Update (or create) <strong>passwordSalt</strong> field with the salt above</li>
                                 <li>Your new password will be active immediately</li>
                             </ol>
                         </div>
