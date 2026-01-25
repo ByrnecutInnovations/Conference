@@ -527,13 +527,23 @@
         };
         
         function showModal(title, message, onConfirm) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            document.getElementById('modal').classList.add('active');
+            const modal = document.getElementById('modal');
+            const modalContent = modal.querySelector('.modal-content');
+            
+            // Reset modal to default structure
+            modalContent.innerHTML = `
+                <h2 id="modalTitle">${escapeHtml(title)}</h2>
+                <p id="modalMessage">${escapeHtml(message)}</p>
+                <div class="modal-buttons">
+                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
+                    <button id="modalConfirm" class="btn-danger">Confirm</button>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+            
             const confirmBtn = document.getElementById('modalConfirm');
-            const newBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-            newBtn.onclick = () => {
+            confirmBtn.onclick = () => {
                 onConfirm();
                 window.closeModal();
             };
