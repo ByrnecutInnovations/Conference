@@ -523,14 +523,26 @@
         
         // Modal management
         window.closeModal = function() {
-            document.getElementById('modal').classList.remove('active');
+            const modal = document.getElementById('modal');
+            modal.classList.remove('active');
+            
+            // Reset modal to default structure when closing
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <h2 id="modalTitle">Confirm Action</h2>
+                <p id="modalMessage"></p>
+                <div class="modal-buttons">
+                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
+                    <button id="modalConfirm" class="btn-danger">Confirm</button>
+                </div>
+            `;
         };
         
         function showModal(title, message, onConfirm) {
             const modal = document.getElementById('modal');
             const modalContent = modal.querySelector('.modal-content');
             
-            // Reset modal to default structure
+            // Always reset modal to default structure first
             modalContent.innerHTML = `
                 <h2 id="modalTitle">${escapeHtml(title)}</h2>
                 <p id="modalMessage">${escapeHtml(message)}</p>
