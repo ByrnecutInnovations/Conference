@@ -841,7 +841,7 @@
         
         window.toggleSession = async () => {
             updateLastActivity();
-            await set(settingsRef, { sessionOpen: !sessionOpen });
+            await set(ref(database, 'settings/sessionOpen'), !sessionOpen);
         };
         
         window.archiveAndClear = () => {
