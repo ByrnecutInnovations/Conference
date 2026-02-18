@@ -5,77 +5,395 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Byrnecut Q&A Session</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5A623; min-height: 100vh; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-        .header { background: #F5A623; color: #2D2D2D; padding: 30px; text-align: center; }
-        .logo { width: 120px; height: auto; margin-bottom: 20px; }
-        .header h1 { font-size: 28px; margin-bottom: 10px; font-weight: 700; }
-        .header p { opacity: 0.9; font-size: 16px; }
-        .content { padding: 30px; }
-        .login-form, .question-form { display: flex; flex-direction: column; gap: 20px; }
-        .login-form { max-width: 400px; margin: 0 auto; }
-        .form-group { display: flex; flex-direction: column; gap: 8px; }
-        label { font-weight: 600; color: #2D2D2D; font-size: 14px; }
-        .char-counter { font-size: 12px; color: #666; text-align: right; }
-        .char-counter.warning { color: #F5A623; }
-        .char-counter.error { color: #dc3545; }
-        input, textarea { padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; font-family: inherit; transition: border-color 0.3s; }
-        input:focus, textarea:focus { outline: none; border-color: #F5A623; }
-        textarea { min-height: 120px; resize: vertical; }
-        button { background: #F5A623; color: #2D2D2D; border: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245, 166, 35, 0.4); }
-        button:active { transform: translateY(0); }
-        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .success-message, .error-message, .info-message { padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
-        .success-message { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .error-message { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-        .info-message { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
-        .closed-message { text-align: center; padding: 40px 20px; }
-        .closed-message svg { width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.3; }
-        .moderator-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; flex-wrap: wrap; gap: 10px; }
-        .session-status { display: flex; align-items: center; gap: 10px; }
-        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #28a745; }
-        .status-indicator.closed { background: #dc3545; }
-        .moderator-controls, .control-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .moderator-controls button, .control-group button { flex: 1; min-width: 120px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #F5A623;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #F5A623;
+            color: #2D2D2D;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .login-form, .question-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #2D2D2D;
+            font-size: 14px;
+        }
+        
+        .char-counter {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+        }
+        
+        .char-counter.warning {
+            color: #F5A623;
+        }
+        
+        .char-counter.error {
+            color: #dc3545;
+        }
+        
+        input, textarea {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #F5A623;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        button {
+            background: #F5A623;
+            color: #2D2D2D;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 166, 35, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .success-message, .error-message, .info-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .info-message {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .closed-message {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .closed-message svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .moderator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .session-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+        }
+        
+        .status-indicator.closed {
+            background: #dc3545;
+        }
+        
+        .moderator-controls, .control-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .moderator-controls button, .control-group button {
+            flex: 1;
+            min-width: 120px;
+        }
+        
         .btn-danger { background: #dc3545; color: white; }
         .btn-success { background: #28a745; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
         .btn-approve { background: #28a745; color: white; }
         .btn-reject { background: #dc3545; color: white; }
         .btn-answer { background: #6c757d; color: white; }
-        .question-list { display: flex; flex-direction: column; gap: 15px; }
-        .question-card { border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; }
+        
+        .question-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .question-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
         .question-card.pending { border-left: 4px solid #F5A623; }
         .question-card.approved { border-left: 4px solid #28a745; background: #f8fff9; }
         .question-card.answered { border-left: 4px solid #6c757d; background: #f8f9fa; opacity: 0.7; }
-        .question-header { display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
-        .question-meta { font-size: 12px; color: #666; }
-        .question-status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+        
+        .question-meta {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .question-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
         .status-pending { background: #fff3cd; color: #856404; }
         .status-approved { background: #d4edda; color: #155724; }
         .status-answered { background: #e2e3e5; color: #383d41; }
-        .question-text { font-size: 16px; color: #2D2D2D; margin-bottom: 12px; line-height: 1.5; }
-        .question-name { font-size: 14px; color: #666; font-style: italic; margin-bottom: 12px; }
-        .question-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .question-actions button { padding: 8px 16px; font-size: 14px; flex: 0; }
-        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
-        .empty-state svg { width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.3; }
-        .display-view { background: #2D2D2D; min-height: 100vh; padding: 40px; }
-        .display-container { max-width: 1200px; margin: 0 auto; }
-        .display-header { text-align: center; margin-bottom: 40px; }
-        .display-logo { width: 200px; height: auto; margin-bottom: 20px; }
-        .display-title { color: #F5A623; font-size: 48px; font-weight: 700; }
-        .display-question { background: white; border-radius: 12px; padding: 40px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-left: 8px solid #F5A623; }
-        .display-question-text { font-size: 28px; color: #2D2D2D; line-height: 1.6; margin-bottom: 20px; }
-        .display-question-name { font-size: 18px; color: #666; font-style: italic; }
-        .loading { text-align: center; padding: 20px; color: #666; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
-        .modal-buttons button { flex: 1; }
+        
+        .question-text {
+            font-size: 16px;
+            color: #2D2D2D;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        .question-name {
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+        
+        .question-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .question-actions button {
+            padding: 8px 16px;
+            font-size: 14px;
+            flex: 0;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .display-view {
+            background: #2D2D2D;
+            min-height: 100vh;
+            padding: 40px;
+        }
+        
+        .display-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .display-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .display-logo {
+            width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        
+        .display-title {
+            color: #F5A623;
+            font-size: 48px;
+            font-weight: 700;
+        }
+        
+        .display-question {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border-left: 8px solid #F5A623;
+        }
+        
+        .display-question-text {
+            font-size: 28px;
+            color: #2D2D2D;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .display-question-name {
+            font-size: 18px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -90,11 +408,12 @@
             </div>
         </div>
     </div>
+    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, push, set, onValue, remove, update, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        const app = initializeApp({
+        const firebaseConfig = {
             apiKey: "AIzaSyCoXUndzA5tynEW0LV7_nldit1Jx-wZXVU",
             authDomain: "conference-qa-2375a.firebaseapp.com",
             databaseURL: "https://conference-qa-2375a-default-rtdb.firebaseio.com",
@@ -102,35 +421,152 @@
             storageBucket: "conference-qa-2375a.firebasestorage.app",
             messagingSenderId: "911059882084",
             appId: "1:911059882084:web:91ffa97c1f7564e695cf71"
-        });
+        };
         
+        const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const questionsRef = ref(database, 'questions');
         const settingsRef = ref(database, 'settings');
+        const archiveRef = ref(database, 'archive');
+        
         const appDiv = document.getElementById('app');
         const urlParams = new URLSearchParams(window.location.search);
         const isModerator = urlParams.get('moderator') === 'true';
         const isDisplay = urlParams.get('display') === 'true';
+        
         const MAX_QUESTION_LENGTH = 500;
-        const RATE_LIMIT_MINUTES = 1;
-        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
+        const RATE_LIMIT_MINUTES = 2;
+        const SESSION_TIMEOUT_MINUTES = 30;
+        const MIN_PASSWORD_LENGTH = 8;
+        const MAX_PASSWORD_LENGTH = 128;
         
-        async function hashPassword(password) {
+       const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='67.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='132.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
+        // Session timeout management
+        function updateLastActivity() {
+            sessionStorage.setItem('lastActivity', Date.now().toString());
+        }
+        
+        function checkSessionTimeout() {
+            const lastActivity = sessionStorage.getItem('lastActivity');
+            if (!lastActivity) {
+                updateLastActivity();
+                return false;
+            }
+            const timeSince = Date.now() - parseInt(lastActivity);
+            const minutesSince = timeSince / (1000 * 60);
+            if (minutesSince >= SESSION_TIMEOUT_MINUTES) {
+                sessionStorage.removeItem('moderatorAuth');
+                sessionStorage.removeItem('lastActivity');
+                return true;
+            }
+            updateLastActivity();
+            return false;
+        }
+        
+        // Password management
+        async function hashPassword(password, salt = '') {
             const encoder = new TextEncoder();
-            const data = encoder.encode(password);
+            const data = encoder.encode(password + salt);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function getPasswordHash() {
-            const snapshot = await get(ref(database, 'settings/passwordHash'));
-            return snapshot.val() || 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+        function generateSalt() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
+        async function getPasswordData() {
+            const hashSnapshot = await get(ref(database, 'settings/passwordHash'));
+            const saltSnapshot = await get(ref(database, 'settings/passwordSalt'));
+            
+            const hash = hashSnapshot.val();
+            const salt = saltSnapshot.val();
+            
+            if (!hash) {
+                const defaultHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+                return { hash: defaultHash, salt: null, needsMigration: true };
+            }
+            
+            return {
+                hash: hash,
+                salt: salt || null,
+                needsMigration: !salt
+            };
+        }
+        
+        async function updatePasswordHash(newPassword) {
+            const salt = generateSalt();
+            const hash = await hashPassword(newPassword, salt);
+            await set(ref(database, 'settings/password'), { hash, salt });
+        }
+        
+        // Rate limiting
         function checkRateLimit() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return true;
-            return (Date.now() - parseInt(lastSubmit)) / (1000 * 60) >= RATE_LIMIT_MINUTES;
+            const timeSince = Date.now() - parseInt(lastSubmit);
+            return timeSince / (1000 * 60) >= RATE_LIMIT_MINUTES;
+        }
+        
+        function setRateLimit() {
+            localStorage.setItem('lastQuestionSubmit', Date.now().toString());
+        }
+        
+        function getRemainingTime() {
+            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
+            if (!lastSubmit) return 0;
+            const timeSince = Date.now() - parseInt(lastSubmit);
+            const remaining = RATE_LIMIT_MINUTES - (timeSince / (1000 * 60));
+            return Math.max(0, Math.ceil(remaining));
+        }
+        
+        // Modal management
+        window.closeModal = function() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('active');
+            
+            // Reset modal to default structure when closing
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <h2 id="modalTitle">Confirm Action</h2>
+                <p id="modalMessage"></p>
+                <div class="modal-buttons">
+                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
+                    <button id="modalConfirm" class="btn-danger">Confirm</button>
+                </div>
+            `;
+        };
+        
+        function showModal(title, message, onConfirm) {
+            const modal = document.getElementById('modal');
+            const modalContent = modal.querySelector('.modal-content');
+            
+            // Always reset modal to default structure first
+            modalContent.innerHTML = `
+                <h2 id="modalTitle">${escapeHtml(title)}</h2>
+                <p id="modalMessage">${escapeHtml(message)}</p>
+                <div class="modal-buttons">
+                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
+                    <button id="modalConfirm" class="btn-danger">Confirm</button>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+            
+            const confirmBtn = document.getElementById('modalConfirm');
+            confirmBtn.onclick = () => {
+                onConfirm();
+                window.closeModal();
+            };
+        }
+        
+        async function isSessionOpen() {
+            const snapshot = await get(settingsRef);
+            const settings = snapshot.val();
+            return settings?.sessionOpen !== false;
         }
         
         function escapeHtml(text) {
@@ -139,172 +575,643 @@
             return div.innerHTML;
         }
         
-        window.closeModal = () => document.getElementById('modal').classList.remove('active');
-        
-        function showModal(title, message, onConfirm) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            document.getElementById('modal').classList.add('active');
-            const btn = document.getElementById('modalConfirm');
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.onclick = () => { onConfirm(); window.closeModal(); };
+        function escapeJsString(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
         
+        function isValidQuestionId(id) {
+            return typeof id === 'string' && id.length > 0 && id.length < 200 && /^[a-zA-Z0-9_-]+$/.test(id);
+        }
+        
+        // Audience view
         async function renderAudienceView() {
-            const snapshot = await get(settingsRef);
-            const sessionOpen = snapshot.val()?.sessionOpen !== false;
+            const sessionOpen = await isSessionOpen();
             
             if (!sessionOpen) {
-                appDiv.innerHTML = `<div class="container"><div class="header"><img src="${logoSVG}" class="logo"><h1>Q&A Session</h1></div><div class="content"><div class="closed-message"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg><h2>Question Submission Closed</h2></div></div></div>`;
+                appDiv.innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                            <h1>Q&A Session</h1>
+                        </div>
+                        <div class="content">
+                            <div class="closed-message">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                <h2>Question Submission Closed</h2>
+                                <p>The Q&A session is not currently accepting questions.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
                 return;
             }
             
             const canSubmit = checkRateLimit();
-            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
-            const remaining = lastSubmit ? Math.ceil(((RATE_LIMIT_MINUTES * 60 * 1000) - (Date.now() - parseInt(lastSubmit))) / 1000) : 0;
+            const remainingTime = getRemainingTime();
             
-            appDiv.innerHTML = `<div class="container"><div class="header"><img src="${logoSVG}" class="logo"><h1>Submit Your Question</h1><p>Your question will be reviewed before being shown to the speaker</p></div><div class="content"><form class="question-form" id="questionForm"><div class="form-group"><label for="name">Your Name (Optional)</label><input type="text" id="name" placeholder="Anonymous"></div><div class="form-group"><label for="question">Your Question * (Max ${MAX_QUESTION_LENGTH} characters)</label><textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea><div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div></div>${!canSubmit ? `<div class="info-message">Please wait <span id="countdown">${remaining}</span> seconds before submitting another question.</div>` : ''}<button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button><div id="message"></div></form></div></div>`;
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Submit Your Question</h1>
+                        <p>Your question will be reviewed before being shown to the speaker</p>
+                    </div>
+                    <div class="content">
+                        <form class="question-form" id="questionForm">
+                            <div class="form-group">
+                                <label for="name">Your Name (Optional)</label>
+                                <input type="text" id="name" placeholder="Anonymous">
+                            </div>
+                            <div class="form-group">
+                                <label for="question">Your Question * (Max ${MAX_QUESTION_LENGTH} characters)</label>
+                                <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
+                                <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
+                            </div>
+                            ${!canSubmit ? `<div class="info-message">Please wait ${remainingTime} minute(s) before submitting another question.</div>` : ''}
+                            <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
+                            <div id="message"></div>
+                        </form>
+                    </div>
+                </div>
+            `;
             
-            if (!canSubmit && remaining > 0) {
-                const countdownEl = document.getElementById('countdown');
-                const timer = setInterval(() => {
-                    const ls = localStorage.getItem('lastQuestionSubmit');
-                    if (!ls) { clearInterval(timer); renderAudienceView(); return; }
-                    const rem = Math.ceil(((RATE_LIMIT_MINUTES * 60 * 1000) - (Date.now() - parseInt(ls))) / 1000);
-                    if (rem <= 0) { clearInterval(timer); renderAudienceView(); return; }
-                    if (countdownEl) countdownEl.textContent = rem;
-                }, 1000);
-            }
+            const questionTextarea = document.getElementById('question');
+            const charCounter = document.getElementById('charCounter');
             
-            const textarea = document.getElementById('question');
-            const counter = document.getElementById('charCounter');
-            textarea.addEventListener('input', () => {
-                const len = textarea.value.length;
-                counter.textContent = `${len} / ${MAX_QUESTION_LENGTH}`;
-                counter.classList.remove('warning', 'error');
-                if (len > MAX_QUESTION_LENGTH * 0.9) counter.classList.add('error');
-                else if (len > MAX_QUESTION_LENGTH * 0.7) counter.classList.add('warning');
+            questionTextarea.addEventListener('input', () => {
+                const length = questionTextarea.value.length;
+                charCounter.textContent = `${length} / ${MAX_QUESTION_LENGTH}`;
+                charCounter.classList.remove('warning', 'error');
+                if (length > MAX_QUESTION_LENGTH * 0.9) charCounter.classList.add('error');
+                else if (length > MAX_QUESTION_LENGTH * 0.7) charCounter.classList.add('warning');
             });
             
             document.getElementById('questionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!checkRateLimit()) return;
-                const btn = document.getElementById('submitBtn');
-                const msg = document.getElementById('message');
+                
+                const submitBtn = document.getElementById('submitBtn');
+                const messageDiv = document.getElementById('message');
                 const name = document.getElementById('name').value.trim() || 'Anonymous';
-                const question = document.getElementById('question').value.trim();
-                btn.disabled = true;
-                btn.textContent = 'Submitting...';
+                const questionText = document.getElementById('question').value.trim();
+                
+                if (questionText.length > MAX_QUESTION_LENGTH) {
+                    messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
+                    return;
+                }
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+                
                 try {
-                    await set(push(questionsRef), { name, question, timestamp: Date.now(), status: 'pending' });
-                    localStorage.setItem('lastQuestionSubmit', Date.now().toString());
-                    msg.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
+                    await set(push(questionsRef), {
+                        name,
+                        question: questionText,
+                        timestamp: Date.now(),
+                        status: 'pending'
+                    });
+                    
+                    setRateLimit();
+                    messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
+                    document.getElementById('questionForm').reset();
+                    charCounter.textContent = `0 / ${MAX_QUESTION_LENGTH}`;
                     setTimeout(() => renderAudienceView(), 2000);
                 } catch (error) {
-                    msg.innerHTML = '<div class="error-message">Error submitting question.</div>';
-                    btn.disabled = false;
-                    btn.textContent = 'Submit Question';
+                    messageDiv.innerHTML = '<div class="error-message">Error submitting question.</div>';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Question';
                 }
             });
         }
         
+        // Moderator login
         function renderModeratorLogin() {
-            appDiv.innerHTML = `<div class="container"><div class="header"><img src="${logoSVG}" class="logo"><h1>Moderator Login</h1></div><div class="content"><form class="login-form" id="loginForm"><div class="form-group"><label for="password">Password</label><input type="password" id="password" required></div><button type="submit">Login</button><div id="loginMessage"></div></form></div></div>`;
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Moderator Login</h1>
+                        <p>Enter password to access moderator dashboard</p>
+                    </div>
+                    <div class="content">
+                        <form class="login-form" id="loginForm">
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" placeholder="Enter moderator password" required>
+                            </div>
+                            <button type="submit" id="loginBtn">Login</button>
+                            <div id="loginMessage"></div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const hash = await hashPassword(document.getElementById('password').value);
-                const stored = await getPasswordHash();
-                if (hash === stored) {
-                    sessionStorage.setItem('moderatorAuth', 'true');
-                    renderModeratorView();
-                } else {
-                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Incorrect password</div>';
+                const loginBtn = document.getElementById('loginBtn');
+                const messageDiv = document.getElementById('loginMessage');
+                const password = document.getElementById('password').value;
+                
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Logging in...';
+                messageDiv.innerHTML = '';
+                
+                try {
+                    const passwordData = await getPasswordData();
+                    
+                    let isValid = false;
+                    if (passwordData.salt) {
+                        const hash = await hashPassword(password, passwordData.salt);
+                        isValid = hash === passwordData.hash;
+                    } else {
+                        const hash = await hashPassword(password, '');
+                        isValid = hash === passwordData.hash;
+                    }
+                    
+                    if (isValid) {
+                        sessionStorage.setItem('moderatorAuth', 'true');
+                        updateLastActivity();
+                        renderModeratorView();
+                    } else {
+                        messageDiv.innerHTML = '<div class="error-message">Incorrect password</div>';
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Login';
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    messageDiv.innerHTML = `<div class="error-message">Login error: ${error.message}</div>`;
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
                 }
             });
         }
         
-        let currentFilter = 'all', allQuestions = {}, sessionOpen = true;
+        let currentFilter = 'all';
+        let allQuestions = {};
+        let sessionOpen = true;
         
+        // Moderator view
         async function renderModeratorView() {
-            if (sessionStorage.getItem('moderatorAuth') !== 'true') { renderModeratorLogin(); return; }
-            appDiv.innerHTML = `<div class="container"><div class="header"><img src="${logoSVG}" class="logo"><h1>Moderator Dashboard</h1></div><div class="content"><div class="moderator-header"><div class="session-status"><span class="status-indicator" id="statusIndicator"></span><span id="statusText">Session Open</span></div><button onclick="window.logout()" class="btn-secondary">Logout</button></div><div class="control-group"><button onclick="window.toggleSession()" id="toggleSessionBtn">Close Session</button><button onclick="window.archiveAndClear()" class="btn-danger">Archive & Clear</button><button onclick="window.downloadQuestions()" class="btn-secondary">Download CSV</button></div><div class="moderator-controls"><button onclick="window.filterQuestions('all')" id="filterAll">All</button><button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button><button onclick="window.filterQuestions('approved')" id="filterApproved">Approved</button></div><div id="questionList" class="loading">Loading...</div></div></div>`;
-            onValue(settingsRef, (s) => {
-                sessionOpen = s.val()?.sessionOpen !== false;
-                const ind = document.getElementById('statusIndicator');
-                const txt = document.getElementById('statusText');
-                const btn = document.getElementById('toggleSessionBtn');
-                if (ind && txt && btn) {
-                    if (sessionOpen) { ind.classList.remove('closed'); txt.textContent = 'Session Open'; btn.textContent = 'Close Session'; btn.className = 'btn-danger'; }
-                    else { ind.classList.add('closed'); txt.textContent = 'Session Closed'; btn.textContent = 'Open Session'; btn.className = 'btn-success'; }
-                }
+            if (checkSessionTimeout()) {
+                showModal('Session Expired', 'Your session has expired due to inactivity. Please log in again.', () => {
+                    renderModeratorLogin();
+                });
+                return;
+            }
+            
+            if (sessionStorage.getItem('moderatorAuth') !== 'true') {
+                renderModeratorLogin();
+                return;
+            }
+            
+            updateLastActivity();
+            
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Moderator Dashboard</h1>
+                        <p>Review and manage submitted questions</p>
+                    </div>
+                    <div class="content">
+                        <div class="moderator-header">
+                            <div class="session-status">
+                                <span class="status-indicator" id="statusIndicator"></span>
+                                <span id="statusText">Session Open</span>
+                            </div>
+                            <button onclick="window.logout()" class="btn-secondary">Logout</button>
+                        </div>
+                        <div class="control-group">
+                            <button onclick="window.toggleSession()" id="toggleSessionBtn" class="btn-success">Close Session</button>
+                            <button onclick="window.archiveAndClear()" class="btn-danger">Archive & Clear All</button>
+                            <button onclick="window.downloadQuestions()" class="btn-secondary">Download CSV</button>
+                            <button onclick="window.showChangePassword()" class="btn-secondary">Change Password</button>
+                        </div>
+                        <div class="moderator-controls">
+                            <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
+                            <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
+                            <button onclick="window.filterQuestions('approved')" id="filterApproved">Approved</button>
+                        </div>
+                        <div id="questionList" class="question-list">
+                            <div class="loading">Loading questions...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            onValue(settingsRef, (snapshot) => {
+                sessionOpen = snapshot.val()?.sessionOpen !== false;
+                updateSessionUI();
             });
-            onValue(questionsRef, (s) => { allQuestions = s.val() || {}; displayQuestions(); });
+            
+            onValue(questionsRef, (snapshot) => {
+                allQuestions = snapshot.val() || {};
+                displayQuestions();
+            });
         }
         
-        window.logout = () => { sessionStorage.removeItem('moderatorAuth'); renderModeratorLogin(); };
-        window.toggleSession = async () => await set(ref(database, 'settings/sessionOpen'), !sessionOpen);
-        window.archiveAndClear = () => showModal('Archive & Clear', 'Save to archive and clear all?', async () => {
-            const t = Date.now();
-            if (Object.keys(allQuestions).length > 0) await set(ref(database, `archive/session_${t}`), { timestamp: t, date: new Date(t).toISOString(), questions: allQuestions });
-            await remove(questionsRef);
-        });
+        function updateSessionUI() {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const toggleBtn = document.getElementById('toggleSessionBtn');
+            
+            if (indicator && statusText && toggleBtn) {
+                if (sessionOpen) {
+                    indicator.classList.remove('closed');
+                    statusText.textContent = 'Session Open';
+                    toggleBtn.textContent = 'Close Session';
+                    toggleBtn.className = 'btn-danger';
+                } else {
+                    indicator.classList.add('closed');
+                    statusText.textContent = 'Session Closed';
+                    toggleBtn.textContent = 'Open Session';
+                    toggleBtn.className = 'btn-success';
+                }
+            }
+        }
+        
+        window.logout = () => {
+            sessionStorage.removeItem('moderatorAuth');
+            sessionStorage.removeItem('lastActivity');
+            renderModeratorLogin();
+        };
+        
+        window.toggleSession = async () => {
+            updateLastActivity();
+            await set(ref(database, 'settings/sessionOpen'), !sessionOpen);
+        };
+        
+        window.archiveAndClear = () => {
+            updateLastActivity();
+            showModal('Archive and Clear All Questions',
+                'This will save all questions to archive and clear the active session. Continue?',
+                async () => {
+                    const timestamp = Date.now();
+                    if (Object.keys(allQuestions).length > 0) {
+                        await set(ref(database, `archive/session_${timestamp}`), {
+                            timestamp,
+                            date: new Date(timestamp).toISOString(),
+                            questions: allQuestions
+                        });
+                    }
+                    await remove(questionsRef);
+                }
+            );
+        };
+        
         window.downloadQuestions = () => {
-            const q = Object.entries(allQuestions).map(([id, d]) => ({ ...d, date: new Date(d.timestamp).toISOString() }));
-            const csv = [['Date', 'Name', 'Question', 'Status'], ...q.map(x => [x.date, x.name, x.question.replace(/"/g, '""'), x.status])].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            updateLastActivity();
+            const questions = Object.entries(allQuestions).map(([id, data]) => ({
+                ...data,
+                date: new Date(data.timestamp).toISOString()
+            }));
+            
+            const csv = [
+                ['Date', 'Name', 'Question', 'Status'],
+                ...questions.map(q => [
+                    q.date,
+                    q.name,
+                    q.question.replace(/"/g, '""'),
+                    q.status
+                ])
+            ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `qa_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `qa_session_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         };
-        window.filterQuestions = (f) => {
-            currentFilter = f;
-            ['filterAll', 'filterPending', 'filterApproved'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) { b.style.opacity = '1'; b.style.fontWeight = 'normal'; }
-            });
-            const active = document.getElementById('filter' + f.charAt(0).toUpperCase() + f.slice(1));
-            if (active) { active.style.opacity = '0.8'; active.style.fontWeight = '700'; }
-            displayQuestions();
-        };
-        window.approveQuestion = async (id) => await update(ref(database, `questions/${id}`), { status: 'approved' });
-        window.rejectQuestion = (id) => showModal('Delete', 'Delete this question?', async () => await remove(ref(database, `questions/${id}`)));
-        window.markAnswered = async (id) => await update(ref(database, `questions/${id}`), { status: 'answered' });
         
+        window.showChangePassword = () => {
+            updateLastActivity();
+            const modal = document.getElementById('modal');
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <h2>Change Moderator Password</h2>
+                <form id="changePasswordForm" style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password (to verify)</label>
+                        <input type="password" id="currentPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password (min 8 characters)</label>
+                        <input type="password" id="newPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" required style="width: 100%; margin-bottom: 15px;">
+                    </div>
+                    <div id="passwordMessage" style="margin-bottom: 15px;"></div>
+                    <div class="modal-buttons">
+                        <button type="button" onclick="window.closeModal()" class="btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-success">Generate Hash</button>
+                    </div>
+                </form>
+            `;
+            modal.classList.add('active');
+            
+            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageDiv = document.getElementById('passwordMessage');
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+
+                if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) {
+                    messageDiv.innerHTML = '<div class="error-message">Current password is invalid.</div>';
+                    return;
+                }
+
+                if (newPassword.length < MIN_PASSWORD_LENGTH) {
+                    messageDiv.innerHTML = `<div class="error-message">New password must be at least ${MIN_PASSWORD_LENGTH} characters.</div>`;
+                    return;
+                }
+
+                if (newPassword.length > MAX_PASSWORD_LENGTH) {
+                    messageDiv.innerHTML = `<div class="error-message">New password must be no more than ${MAX_PASSWORD_LENGTH} characters.</div>`;
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    messageDiv.innerHTML = '<div class="error-message">New password and confirmation do not match.</div>';
+                    return;
+                }
+
+                try {
+                    const passwordData = await getPasswordData();
+                    
+                    // Verify current password
+                    let isValid = false;
+                    if (passwordData.salt) {
+                        const currentHash = await hashPassword(currentPassword, passwordData.salt);
+                        isValid = currentHash === passwordData.hash;
+                    } else if (passwordData.needsMigration) {
+                        const oldHash = await hashPassword(currentPassword, '');
+                        isValid = oldHash === passwordData.hash;
+                    }
+                    
+                    if (!isValid) {
+                        messageDiv.innerHTML = '<div class="error-message">Current password is incorrect.</div>';
+                        return;
+                    }
+
+                    // Generate new hash and salt
+                    const newSalt = generateSalt();
+                    const newHash = await hashPassword(newPassword, newSalt);
+                    
+                    // Display the hash and salt for manual entry
+                    modalContent.innerHTML = `
+                        <h2>Password Hash Generated</h2>
+                        <p style="margin: 15px 0; color: #155724; background: #d4edda; padding: 10px; border-radius: 5px;">
+                            ✓ Current password verified successfully
+                        </p>
+                        <p style="margin: 15px 0; font-weight: 600;">Copy these values into Firebase Console:</p>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Hash:</label>
+                            <textarea readonly id="hashValue" style="width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 10px; margin-bottom: 5px;">${newHash}</textarea>
+                            <button type="button" onclick="navigator.clipboard.writeText('${newHash}').then(() => alert('Hash copied!'))" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">Copy Hash</button>
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Salt:</label>
+                            <textarea readonly id="saltValue" style="width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 10px; margin-bottom: 5px;">${newSalt}</textarea>
+                            <button type="button" onclick="navigator.clipboard.writeText('${newSalt}').then(() => alert('Salt copied!'))" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">Copy Salt</button>
+                        </div>
+                        
+                        <div style="margin: 20px 0; padding: 15px; background: #d1ecf1; border-left: 4px solid #0c5460; font-size: 13px;">
+                            <strong>Instructions:</strong>
+                            <ol style="margin: 10px 0; padding-left: 20px;">
+                                <li>Go to <strong>Firebase Console → Realtime Database</strong></li>
+                                <li>Navigate to <strong>settings</strong></li>
+                                <li>Update (or create) <strong>passwordHash</strong> field with the hash above</li>
+                                <li>Update (or create) <strong>passwordSalt</strong> field with the salt above</li>
+                                <li>Your new password will be active immediately</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button type="button" onclick="window.closeModal()" class="btn-success">Done</button>
+                        </div>
+                    `;
+                } catch (err) {
+                    messageDiv.innerHTML = '<div class="error-message">Error generating password hash.</div>';
+                    console.error('Password generation error:', err);
+                }
+            });
+        };
+
+        function isValidStatus(status) {
+            return ['pending', 'approved', 'answered'].includes(status);
+        }
+
+        window.filterQuestions = (filter) => {
+            updateLastActivity();
+            const validFilters = ['all', 'pending', 'approved', 'answered'];
+            if (validFilters.includes(filter)) {
+                currentFilter = filter;
+                
+                ['filterAll', 'filterPending', 'filterApproved', 'filterAnswered'].forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        btn.style.opacity = '1';
+                        btn.style.fontWeight = 'normal';
+                    }
+                });
+                
+                const activeBtnMap = {
+                    'all': 'filterAll',
+                    'pending': 'filterPending',
+                    'approved': 'filterApproved',
+                    'answered': 'filterAnswered'
+                };
+                
+                const activeBtn = document.getElementById(activeBtnMap[filter]);
+                if (activeBtn) {
+                    activeBtn.style.opacity = '0.8';
+                    activeBtn.style.fontWeight = '700';
+                }
+                
+                displayQuestions();
+            } else {
+                console.error('Invalid filter value:', filter);
+            }
+        };
+
+        window.approveQuestion = async (id) => {
+            updateLastActivity();
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for approval:', id);
+                return;
+            }
+            await update(ref(database, `questions/${id}`), { status: 'approved' });
+        };
+
+        window.rejectQuestion = (id) => {
+            updateLastActivity();
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for rejection:', id);
+                return;
+            }
+            showModal('Reject question', 'This will permanently delete the question. Continue?', async () => {
+                await remove(ref(database, `questions/${id}`));
+            });
+        };
+
+        window.markAnswered = async (id) => {
+            updateLastActivity();
+            if (!isValidQuestionId(id)) {
+                console.error('Invalid question ID for marking answered:', id);
+                return;
+            }
+            await update(ref(database, `questions/${id}`), { status: 'answered' });
+        };
+
         function displayQuestions() {
             const list = document.getElementById('questionList');
             if (!list) return;
-            const entries = Object.entries(allQuestions).map(([id, q]) => ({ id, ...q })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            const entries = Object.entries(allQuestions || {})
+                .map(([id, q]) => ({ id, ...(q || {}) }))
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
             const filtered = entries.filter(q => currentFilter === 'all' || q.status === currentFilter);
+
             if (filtered.length === 0) {
-                list.innerHTML = `<div class="empty-state"><h3>No questions</h3></div>`;
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3>No questions</h3>
+                        <p>Nothing to show for this filter.</p>
+                    </div>
+                `;
                 return;
             }
+
             list.innerHTML = filtered.map(q => {
-                const s = ['pending', 'approved', 'answered'].includes(q.status) ? q.status : 'pending';
-                const actions = s === 'pending' ? `<button class="btn-approve" onclick="window.approveQuestion('${q.id}')">Approve</button><button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Reject</button>` : s === 'approved' ? `<button class="btn-answer" onclick="window.markAnswered('${q.id}')">Mark Answered</button><button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>` : `<button class="btn-reject" onclick="window.rejectQuestion('${q.id}')">Delete</button>`;
-                return `<div class="question-card ${s}"><div class="question-header"><div class="question-meta">${new Date(q.timestamp).toLocaleString()}</div><span class="question-status status-${s}">${s}</span></div><div class="question-text">${escapeHtml(q.question || '')}</div><div class="question-name">— ${escapeHtml(q.name || 'Anonymous')}</div><div class="question-actions">${actions}</div></div>`;
+                const rawStatus = q.status || 'pending';
+                const status = isValidStatus(rawStatus) ? rawStatus : 'pending';
+                const safeQuestion = escapeHtml(q.question || '');
+                const safeName = escapeHtml(q.name || 'Anonymous');
+                const date = q.timestamp ? new Date(q.timestamp).toLocaleString() : '';
+                
+                if (!isValidQuestionId(q.id)) {
+                    console.error('Invalid question ID:', q.id);
+                    return '';
+                }
+                const safeId = escapeJsString(q.id);
+
+                const actions = (status === 'pending') ? `
+                    <button class="btn-approve" onclick="window.approveQuestion('${safeId}')">Approve</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Reject</button>
+                ` : (status === 'approved') ? `
+                    <button class="btn-answer" onclick="window.markAnswered('${safeId}')">Mark Answered</button>
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
+                ` : `
+                    <button class="btn-reject" onclick="window.rejectQuestion('${safeId}')">Delete</button>
+                `;
+
+                return `
+                    <div class="question-card ${status}">
+                        <div class="question-header">
+                            <div class="question-meta">${date}</div>
+                            <span class="question-status status-${status}">${status}</span>
+                        </div>
+                        <div class="question-text">${safeQuestion}</div>
+                        <div class="question-name">— ${safeName}</div>
+                        <div class="question-actions">${actions}</div>
+                    </div>
+                `;
             }).join('');
         }
-        
+
         function renderDisplayView() {
             document.body.style.padding = '0';
             document.body.style.background = '#2D2D2D';
-            appDiv.innerHTML = `<div class="display-view"><div class="display-container"><div class="display-header"><img src="${logoSVG}" class="display-logo"><div class="display-title">Q&A</div></div><div id="displayQuestions" class="loading">Loading...</div></div></div>`;
+
+            appDiv.innerHTML = `
+                <div class="display-view">
+                    <div class="display-container">
+                        <div class="display-header">
+                            <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
+                            <div class="display-title">Q&A</div>
+                        </div>
+                        <div id="displayQuestions"></div>
+                    </div>
+                </div>
+            `;
+
             const host = document.getElementById('displayQuestions');
-            onValue(questionsRef, (s) => {
-                const approved = Object.entries(s.val() || {}).map(([id, q]) => ({ id, ...q })).filter(q => q.status === 'approved').sort((a, b) => a.timestamp - b.timestamp);
-                if (approved.length === 0) { host.innerHTML = `<div class="display-question"><div class="display-question-text">No approved questions yet.</div></div>`; return; }
-                host.innerHTML = approved.map(q => `<div class="display-question"><div class="display-question-text">${escapeHtml(q.question || '')}</div><div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div></div>`).join('');
+            host.innerHTML = '<div class="loading">Loading questions...</div>';
+
+            onValue(questionsRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                const approved = Object.entries(data)
+                    .map(([id, q]) => ({ id, ...(q || {}) }))
+                    .filter(q => q.status === 'approved')
+                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                if (approved.length === 0) {
+                    host.innerHTML = `
+                        <div class="display-question">
+                            <div class="display-question-text">No approved questions yet.</div>
+                            <div class="display-question-name">Waiting for moderator…</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                host.innerHTML = approved.map(q => `
+                    <div class="display-question">
+                        <div class="display-question-text">${escapeHtml(q.question || '')}</div>
+                        <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
+                    </div>
+                `).join('');
             });
         }
-        
-        if (isDisplay) renderDisplayView();
-        else if (isModerator) renderModeratorView();
-        else renderAudienceView();
+
+        function renderFatalError(message, err) {
+            const details = err ? (err.stack || err.message || String(err)) : '';
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>App error</h1>
+                        <p>Something prevented the page from loading.</p>
+                    </div>
+                    <div class="content">
+                        <div class="error-message">${escapeHtml(message || 'Unknown error')}</div>
+                        ${details ? `<pre style="white-space: pre-wrap; margin-top: 12px; font-size: 12px; color: #444;">${escapeHtml(details)}</pre>` : ''}
+                        <div class="info-message" style="margin-top: 12px;">
+                            If you opened this via <b>file://</b>, Firebase modules may not load. Use a local web server (e.g. VS Code Live Server).
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function bootstrap() {
+            if (!appDiv) return;
+            if (isDisplay) return renderDisplayView();
+            if (isModerator) return renderModeratorView();
+            return renderAudienceView();
+        }
+
+        window.addEventListener('error', (e) => {
+            renderFatalError('Uncaught error', e.error || e.message);
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            renderFatalError('Unhandled promise rejection', e.reason);
+        });
+
+        bootstrap().catch((err) => renderFatalError('Failed to start app', err));
     </script>
 </body>
 </html>
