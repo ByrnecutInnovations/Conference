@@ -436,74 +436,28 @@
         
         const MAX_QUESTION_LENGTH = 500;
         const RATE_LIMIT_MINUTES = 2;
-        const SESSION_TIMEOUT_MINUTES = 30;
-        const MIN_PASSWORD_LENGTH = 8;
-        const MAX_PASSWORD_LENGTH = 128;
         
-       const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='67.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='132.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
-        // Session timeout management
-        function updateLastActivity() {
-            sessionStorage.setItem('lastActivity', Date.now().toString());
-        }
+        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='55' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='145' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         
-        function checkSessionTimeout() {
-            const lastActivity = sessionStorage.getItem('lastActivity');
-            if (!lastActivity) {
-                updateLastActivity();
-                return false;
-            }
-            const timeSince = Date.now() - parseInt(lastActivity);
-            const minutesSince = timeSince / (1000 * 60);
-            if (minutesSince >= SESSION_TIMEOUT_MINUTES) {
-                sessionStorage.removeItem('moderatorAuth');
-                sessionStorage.removeItem('lastActivity');
-                return true;
-            }
-            updateLastActivity();
-            return false;
-        }
-        
-        // Password management
-        async function hashPassword(password, salt = '') {
+        async function hashPassword(password) {
             const encoder = new TextEncoder();
-            const data = encoder.encode(password + salt);
+            const data = encoder.encode(password);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        function generateSalt() {
-            const array = new Uint8Array(16);
-            crypto.getRandomValues(array);
-            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-        
-        async function getPasswordData() {
-            const hashSnapshot = await get(ref(database, 'settings/passwordHash'));
-            const saltSnapshot = await get(ref(database, 'settings/passwordSalt'));
-            
-            const hash = hashSnapshot.val();
-            const salt = saltSnapshot.val();
-            
-            if (!hash) {
-                const defaultHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
-                return { hash: defaultHash, salt: null, needsMigration: true };
-            }
-            
-            return {
-                hash: hash,
-                salt: salt || null,
-                needsMigration: !salt
-            };
+        async function getPasswordHash() {
+            const passwordRef = ref(database, 'settings/passwordHash');
+            const snapshot = await get(passwordRef);
+            return snapshot.val() || 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
         }
         
         async function updatePasswordHash(newPassword) {
-            const salt = generateSalt();
-            const hash = await hashPassword(newPassword, salt);
-            await set(ref(database, 'settings/password'), { hash, salt });
+            const hash = await hashPassword(newPassword);
+            await set(ref(database, 'settings/passwordHash'), hash);
         }
         
-        // Rate limiting
         function checkRateLimit() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return true;
@@ -523,41 +477,18 @@
             return Math.max(0, Math.ceil(remaining));
         }
         
-        // Modal management
         window.closeModal = function() {
-            const modal = document.getElementById('modal');
-            modal.classList.remove('active');
-            
-            // Reset modal to default structure when closing
-            const modalContent = modal.querySelector('.modal-content');
-            modalContent.innerHTML = `
-                <h2 id="modalTitle">Confirm Action</h2>
-                <p id="modalMessage"></p>
-                <div class="modal-buttons">
-                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
-                    <button id="modalConfirm" class="btn-danger">Confirm</button>
-                </div>
-            `;
+            document.getElementById('modal').classList.remove('active');
         };
         
         function showModal(title, message, onConfirm) {
-            const modal = document.getElementById('modal');
-            const modalContent = modal.querySelector('.modal-content');
-            
-            // Always reset modal to default structure first
-            modalContent.innerHTML = `
-                <h2 id="modalTitle">${escapeHtml(title)}</h2>
-                <p id="modalMessage">${escapeHtml(message)}</p>
-                <div class="modal-buttons">
-                    <button onclick="window.closeModal()" class="btn-secondary">Cancel</button>
-                    <button id="modalConfirm" class="btn-danger">Confirm</button>
-                </div>
-            `;
-            
-            modal.classList.add('active');
-            
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modal').classList.add('active');
             const confirmBtn = document.getElementById('modalConfirm');
-            confirmBtn.onclick = () => {
+            const newBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+            newBtn.onclick = () => {
                 onConfirm();
                 window.closeModal();
             };
@@ -575,15 +506,6 @@
             return div.innerHTML;
         }
         
-        function escapeJsString(str) {
-            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
-        }
-        
-        function isValidQuestionId(id) {
-            return typeof id === 'string' && id.length > 0 && id.length < 200 && /^[a-zA-Z0-9_-]+$/.test(id);
-        }
-        
-        // Audience view
         async function renderAudienceView() {
             const sessionOpen = await isSessionOpen();
             
@@ -629,13 +551,49 @@
                                 <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
                                 <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
                             </div>
-                            ${!canSubmit ? `<div class="info-message">Please wait ${remainingTime} minute(s) before submitting another question.</div>` : ''}
+                            ${!canSubmit ? `<div class="info-message" id="rateLimitMessage">Please wait <span id="countdown">${remainingTime * 60}</span> seconds before submitting another question.</div>` : ''}
                             <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
                             <div id="message"></div>
                         </form>
                     </div>
                 </div>
             `;
+            
+            // Start countdown timer if rate limited
+            if (!canSubmit) {
+                const countdownElement = document.getElementById('countdown');
+                const updateCountdown = () => {
+                    const lastSubmit = localStorage.getItem('lastQuestionSubmit');
+                    if (!lastSubmit) {
+                        renderAudienceView();
+                        return;
+                    }
+                    
+                    const timeSince = Date.now() - parseInt(lastSubmit);
+                    const remaining = (RATE_LIMIT_MINUTES * 60 * 1000) - timeSince;
+                    
+                    if (remaining <= 0) {
+                        // Time's up - refresh the view
+                        renderAudienceView();
+                        return;
+                    }
+                    
+                    const secondsRemaining = Math.ceil(remaining / 1000);
+                    if (countdownElement) {
+                        countdownElement.textContent = secondsRemaining;
+                    }
+                };
+                
+                // Update countdown every second
+                updateCountdown();
+                const countdownInterval = setInterval(updateCountdown, 1000);
+                
+                // Clean up interval when form is submitted or page changes
+                const originalSubmit = document.getElementById('questionForm');
+                if (originalSubmit) {
+                    originalSubmit.addEventListener('submit', () => clearInterval(countdownInterval));
+                }
+            }
             
             const questionTextarea = document.getElementById('question');
             const charCounter = document.getElementById('charCounter');
@@ -686,7 +644,6 @@
             });
         }
         
-        // Moderator login
         function renderModeratorLogin() {
             appDiv.innerHTML = `
                 <div class="container">
@@ -701,7 +658,7 @@
                                 <label for="password">Password</label>
                                 <input type="password" id="password" placeholder="Enter moderator password" required>
                             </div>
-                            <button type="submit" id="loginBtn">Login</button>
+                            <button type="submit">Login</button>
                             <div id="loginMessage"></div>
                         </form>
                     </div>
@@ -710,40 +667,15 @@
             
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const loginBtn = document.getElementById('loginBtn');
-                const messageDiv = document.getElementById('loginMessage');
                 const password = document.getElementById('password').value;
+                const passwordHash = await hashPassword(password);
+                const storedHash = await getPasswordHash();
                 
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Logging in...';
-                messageDiv.innerHTML = '';
-                
-                try {
-                    const passwordData = await getPasswordData();
-                    
-                    let isValid = false;
-                    if (passwordData.salt) {
-                        const hash = await hashPassword(password, passwordData.salt);
-                        isValid = hash === passwordData.hash;
-                    } else {
-                        const hash = await hashPassword(password, '');
-                        isValid = hash === passwordData.hash;
-                    }
-                    
-                    if (isValid) {
-                        sessionStorage.setItem('moderatorAuth', 'true');
-                        updateLastActivity();
-                        renderModeratorView();
-                    } else {
-                        messageDiv.innerHTML = '<div class="error-message">Incorrect password</div>';
-                        loginBtn.disabled = false;
-                        loginBtn.textContent = 'Login';
-                    }
-                } catch (error) {
-                    console.error('Login error:', error);
-                    messageDiv.innerHTML = `<div class="error-message">Login error: ${error.message}</div>`;
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Login';
+                if (passwordHash === storedHash) {
+                    sessionStorage.setItem('moderatorAuth', 'true');
+                    renderModeratorView();
+                } else {
+                    document.getElementById('loginMessage').innerHTML = '<div class="error-message">Incorrect password</div>';
                 }
             });
         }
@@ -752,8 +684,8 @@
         let allQuestions = {};
         let sessionOpen = true;
         
-        // Moderator view
         async function renderModeratorView() {
+            // Check session timeout
             if (checkSessionTimeout()) {
                 showModal('Session Expired', 'Your session has expired due to inactivity. Please log in again.', () => {
                     renderModeratorLogin();
@@ -765,8 +697,6 @@
                 renderModeratorLogin();
                 return;
             }
-            
-            updateLastActivity();
             
             appDiv.innerHTML = `
                 <div class="container">
@@ -834,17 +764,14 @@
         
         window.logout = () => {
             sessionStorage.removeItem('moderatorAuth');
-            sessionStorage.removeItem('lastActivity');
             renderModeratorLogin();
         };
         
         window.toggleSession = async () => {
-            updateLastActivity();
-            await set(ref(database, 'settings/sessionOpen'), !sessionOpen);
+            await set(settingsRef, { sessionOpen: !sessionOpen });
         };
         
         window.archiveAndClear = () => {
-            updateLastActivity();
             showModal('Archive and Clear All Questions',
                 'This will save all questions to archive and clear the active session. Continue?',
                 async () => {
@@ -862,7 +789,6 @@
         };
         
         window.downloadQuestions = () => {
-            updateLastActivity();
             const questions = Object.entries(allQuestions).map(([id, data]) => ({
                 ...data,
                 date: new Date(data.timestamp).toISOString()
@@ -887,7 +813,7 @@
             URL.revokeObjectURL(url);
         };
         
-        window.showChangePassword = () => {
+       window.showChangePassword = () => {
             updateLastActivity();
             const modal = document.getElementById('modal');
             const modalContent = modal.querySelector('.modal-content');
