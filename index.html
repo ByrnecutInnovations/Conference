@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -435,7 +436,7 @@
         const isDisplay = urlParams.get('display') === 'true';
         
         const MAX_QUESTION_LENGTH = 500;
-        const RATE_LIMIT_MINUTES = 2;
+        const RATE_LIMIT_MINUTES = 1;
         const SESSION_TIMEOUT_MINUTES = 30;
         const MIN_PASSWORD_LENGTH = 8;
         const MAX_PASSWORD_LENGTH = 128;
@@ -522,6 +523,14 @@
             const remaining = RATE_LIMIT_MINUTES - (timeSince / (1000 * 60));
             return Math.max(0, Math.ceil(remaining));
         }
+
+        function getRemainingSeconds() {
+            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
+            if (!lastSubmit) return 0;
+            const timeSince = Date.now() - parseInt(lastSubmit);
+            const remaining = (RATE_LIMIT_MINUTES * 60 * 1000) - timeSince;
+            return Math.max(0, Math.ceil(remaining / 1000));
+        }
         
         // Modal management
         window.closeModal = function() {
@@ -585,6 +594,11 @@
         
         // Audience view
         async function renderAudienceView() {
+            if (rateLimitInterval) {
+                clearInterval(rateLimitInterval);
+                rateLimitInterval = null;
+            }
+
             const sessionOpen = await isSessionOpen();
             
             if (!sessionOpen) {
@@ -629,7 +643,7 @@
                                 <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
                                 <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
                             </div>
-                            ${!canSubmit ? `<div class="info-message">Please wait ${remainingTime} minute(s) before submitting another question.</div>` : ''}
+                            ${!canSubmit ? `<div class="info-message">Please wait <span id="countdownDisplay">${getRemainingSeconds()}</span> second(s) before submitting another question.</div>` : ''}
                             <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
                             <div id="message"></div>
                         </form>
@@ -651,20 +665,20 @@
             document.getElementById('questionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!checkRateLimit()) return;
-                
+
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
                 const name = document.getElementById('name').value.trim() || 'Anonymous';
                 const questionText = document.getElementById('question').value.trim();
-                
+
                 if (questionText.length > MAX_QUESTION_LENGTH) {
                     messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
                     return;
                 }
-                
+
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
-                
+
                 try {
                     await set(push(questionsRef), {
                         name,
@@ -672,7 +686,7 @@
                         timestamp: Date.now(),
                         status: 'pending'
                     });
-                    
+
                     setRateLimit();
                     messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
                     document.getElementById('questionForm').reset();
@@ -684,6 +698,19 @@
                     submitBtn.textContent = 'Submit Question';
                 }
             });
+
+            if (!canSubmit) {
+                rateLimitInterval = setInterval(() => {
+                    const remaining = getRemainingSeconds();
+                    const display = document.getElementById('countdownDisplay');
+                    if (display) display.textContent = remaining;
+                    if (remaining <= 0) {
+                        clearInterval(rateLimitInterval);
+                        rateLimitInterval = null;
+                        renderAudienceView();
+                    }
+                }, 1000);
+            }
         }
         
         // Moderator login
@@ -751,6 +778,7 @@
         let currentFilter = 'all';
         let allQuestions = {};
         let sessionOpen = true;
+        let rateLimitInterval = null;
         
         // Moderator view
         async function renderModeratorView() {
@@ -1168,12 +1196,19 @@
                     return;
                 }
 
-                host.innerHTML = approved.map(q => `
-                    <div class="display-question">
-                        <div class="display-question-text">${escapeHtml(q.question || '')}</div>
-                        <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
-                    </div>
-                `).join('');
+                host.innerHTML = approved.map(q => {
+                    if (!isValidQuestionId(q.id)) return '';
+                    const safeId = escapeJsString(q.id);
+                    return `
+                        <div class="display-question">
+                            <div class="display-question-text">${escapeHtml(q.question || '')}</div>
+                            <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
+                            <div style="margin-top: 16px; text-align: right;">
+                                <button onclick="window.markAnswered('${safeId}')" class="btn-success" style="font-size: 16px; padding: 10px 24px;">&#10003; Mark Answered</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             });
         }
 
