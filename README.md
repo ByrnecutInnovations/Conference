@@ -59,7 +59,7 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 
 ### Audience view (default)
 - Attendees enter an optional name and their question (max 500 characters)
-- Submissions are rate-limited to one question per 30 seconds per browser (`RATE_LIMIT_SECONDS`)
+- Submissions are rate-limited per browser (default 30 seconds; the moderator can change it live from the dashboard)
 - During the cooldown attendees can keep typing their next question; Submit re-enables automatically when it expires
 - The page switches between open/closed live when the moderator opens or closes the session — no reload or QR re-scan needed
 - Questions go into Firebase with status `pending`
@@ -69,13 +69,15 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 - Approve, reject, or mark questions as answered
 - Filter questions by status: All / Pending / Approved
 - Open or close the session (prevents new audience submissions when closed)
+- **Auto-approve** on/off: when on, new questions go straight to the display (turning it on also approves anything pending) — useful when the moderator is also the presenter
+- **Seconds between questions**: set the audience cooldown live (0 = no limit)
 - Archive and clear all questions at end of session
 - Download questions as a CSV file
 - Change the moderator password (generates a new hash/salt to paste into Firebase Console)
 
 ### Display view (`?display=true`)
 - Shows all approved questions in real time — intended for a projector or second screen
-- Each question has a **Mark Answered** button so the presenter can dismiss questions directly from the display without switching to the moderator dashboard
+- Each question has a round **✓** (mark answered) button so the presenter can dismiss questions directly from the display without switching to the moderator dashboard
 
 ---
 
@@ -102,7 +104,9 @@ questions/
     status      — "pending" | "approved" | "answered"
 
 settings/
-  sessionOpen   — boolean (true = accepting questions)
+  sessionOpen       — boolean (true = accepting questions)
+  autoApprove       — boolean (true = new questions skip moderation)
+  rateLimitSeconds  — integer 0–600 (audience cooldown; default 30 if unset)
   passwordHash  — SHA-256 hash of moderator password
   passwordSalt  — random hex salt for the hash
 
