@@ -395,6 +395,61 @@
         .modal-buttons button {
             flex: 1;
         }
+
+        .settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .setting-row input {
+            width: 90px;
+            padding: 8px;
+        }
+
+        .setting-row button {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .setting-hint {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .display-question {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .display-question-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .btn-tick {
+            flex: none;
+            width: 56px;
+            height: 56px;
+            padding: 0;
+            border-radius: 50%;
+            background: #28a745;
+            color: white;
+            font-size: 28px;
+            line-height: 1;
+        }
     </style>
 </head>
 <body>
@@ -436,7 +491,8 @@
         const isDisplay = urlParams.get('display') === 'true';
         
         const MAX_QUESTION_LENGTH = 500;
-        const RATE_LIMIT_MINUTES = 1;
+        const DEFAULT_RATE_LIMIT_SECONDS = 30;
+        const MAX_RATE_LIMIT_SECONDS = 600;
         const SESSION_TIMEOUT_MINUTES = 30;
         const MIN_PASSWORD_LENGTH = 8;
         const MAX_PASSWORD_LENGTH = 128;
@@ -504,32 +560,31 @@
             await set(ref(database, 'settings/password'), { hash, salt });
         }
         
-        // Rate limiting
-        function checkRateLimit() {
-            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
-            if (!lastSubmit) return true;
-            const timeSince = Date.now() - parseInt(lastSubmit);
-            return timeSince / (1000 * 60) >= RATE_LIMIT_MINUTES;
-        }
-        
-        function setRateLimit() {
-            localStorage.setItem('lastQuestionSubmit', Date.now().toString());
-        }
-        
-        function getRemainingTime() {
-            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
-            if (!lastSubmit) return 0;
-            const timeSince = Date.now() - parseInt(lastSubmit);
-            const remaining = RATE_LIMIT_MINUTES - (timeSince / (1000 * 60));
-            return Math.max(0, Math.ceil(remaining));
+        // Live settings, set by the moderator dashboard (settings/rateLimitSeconds, settings/autoApprove)
+        let rateLimitSeconds = DEFAULT_RATE_LIMIT_SECONDS;
+        let autoApprove = false;
+
+        function normalizeRateLimit(value) {
+            if (value === null || value === undefined) return DEFAULT_RATE_LIMIT_SECONDS;
+            const n = Number(value);
+            return Number.isInteger(n) && n >= 0 && n <= MAX_RATE_LIMIT_SECONDS ? n : DEFAULT_RATE_LIMIT_SECONDS;
         }
 
+        // Rate limiting
         function getRemainingSeconds() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return 0;
             const timeSince = Date.now() - parseInt(lastSubmit);
-            const remaining = (RATE_LIMIT_MINUTES * 60 * 1000) - timeSince;
+            const remaining = (rateLimitSeconds * 1000) - timeSince;
             return Math.max(0, Math.ceil(remaining / 1000));
+        }
+
+        function checkRateLimit() {
+            return getRemainingSeconds() === 0;
+        }
+
+        function setRateLimit() {
+            localStorage.setItem('lastQuestionSubmit', Date.now().toString());
         }
         
         // Modal management
@@ -572,12 +627,6 @@
             };
         }
         
-        async function isSessionOpen() {
-            const snapshot = await get(settingsRef);
-            const settings = snapshot.val();
-            return settings?.sessionOpen !== false;
-        }
-        
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -593,44 +642,111 @@
         }
         
         // Audience view
-        async function renderAudienceView() {
+        let audienceSessionOpen = null;
+        let rateLimitInterval = null;
+        // Survives re-renders (e.g. session closed then reopened) so typed text isn't lost
+        const draft = { name: '', question: '' };
+
+        function renderAudienceView() {
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Q&A Session</h1>
+                    </div>
+                    <div class="content">
+                        <div class="loading">Connecting...</div>
+                    </div>
+                </div>
+            `;
+
+            // Live listener so the page switches between open/closed without a reload
+            onValue(ref(database, 'settings/sessionOpen'), (snapshot) => {
+                const open = snapshot.val() !== false;
+                if (open === audienceSessionOpen) return;
+                audienceSessionOpen = open;
+                if (open) renderQuestionForm();
+                else renderClosedView();
+            }, (error) => renderFatalError('Could not connect to the Q&A session', error));
+
+            // Moderator can change these on the day; apply them without a reload
+            onValue(ref(database, 'settings/rateLimitSeconds'), (snapshot) => {
+                rateLimitSeconds = normalizeRateLimit(snapshot.val());
+                updateSubmitAvailability();
+            });
+            onValue(ref(database, 'settings/autoApprove'), (snapshot) => {
+                autoApprove = snapshot.val() === true;
+                const note = document.getElementById('reviewNote');
+                if (note) note.textContent = reviewNoteText();
+            });
+        }
+
+        function reviewNoteText() {
+            return autoApprove
+                ? 'Your question will be shown to the speaker'
+                : 'Your question will be reviewed before being shown to the speaker';
+        }
+
+        function renderClosedView() {
             if (rateLimitInterval) {
                 clearInterval(rateLimitInterval);
                 rateLimitInterval = null;
             }
 
-            const sessionOpen = await isSessionOpen();
-            
-            if (!sessionOpen) {
-                appDiv.innerHTML = `
-                    <div class="container">
-                        <div class="header">
-                            <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
-                            <h1>Q&A Session</h1>
-                        </div>
-                        <div class="content">
-                            <div class="closed-message">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <h2>Question Submission Closed</h2>
-                                <p>The Q&A session is not currently accepting questions.</p>
-                            </div>
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Q&A Session</h1>
+                    </div>
+                    <div class="content">
+                        <div class="closed-message">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            <h2>Question Submission Closed</h2>
+                            <p>The Q&A session is not currently accepting questions.</p>
+                            <p>This page will update automatically when the session opens.</p>
                         </div>
                     </div>
-                `;
-                return;
+                </div>
+            `;
+        }
+
+        // Enables/disables Submit based on the cooldown, without touching what the user has typed
+        function updateSubmitAvailability() {
+            if (rateLimitInterval) {
+                clearInterval(rateLimitInterval);
+                rateLimitInterval = null;
             }
-            
-            const canSubmit = checkRateLimit();
-            const remainingTime = getRemainingTime();
-            
+
+            const submitBtn = document.getElementById('submitBtn');
+            const waitMessage = document.getElementById('waitMessage');
+            const countdown = document.getElementById('countdownDisplay');
+            if (!submitBtn || !waitMessage || !countdown) return;
+
+            const tick = () => {
+                const remaining = getRemainingSeconds();
+                countdown.textContent = remaining;
+                waitMessage.hidden = remaining === 0;
+                submitBtn.disabled = remaining > 0;
+                if (remaining === 0 && rateLimitInterval) {
+                    clearInterval(rateLimitInterval);
+                    rateLimitInterval = null;
+                }
+            };
+
+            tick();
+            if (getRemainingSeconds() > 0) rateLimitInterval = setInterval(tick, 1000);
+        }
+
+        function renderQuestionForm() {
             appDiv.innerHTML = `
                 <div class="container">
                     <div class="header">
                         <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
                         <h1>Submit Your Question</h1>
-                        <p>Your question will be reviewed before being shown to the speaker</p>
+                        <p id="reviewNote">${reviewNoteText()}</p>
                     </div>
                     <div class="content">
                         <form class="question-form" id="questionForm">
@@ -643,33 +759,48 @@
                                 <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
                                 <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
                             </div>
-                            ${!canSubmit ? `<div class="info-message">Please wait <span id="countdownDisplay">${getRemainingSeconds()}</span> second(s) before submitting another question.</div>` : ''}
-                            <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
+                            <div class="info-message" id="waitMessage" hidden>You can submit another question in <span id="countdownDisplay"></span> second(s). Feel free to start typing it now.</div>
+                            <button type="submit" id="submitBtn">Submit Question</button>
                             <div id="message"></div>
                         </form>
                     </div>
                 </div>
             `;
-            
+
+            const nameInput = document.getElementById('name');
             const questionTextarea = document.getElementById('question');
             const charCounter = document.getElementById('charCounter');
-            
-            questionTextarea.addEventListener('input', () => {
+
+            function updateCharCounter() {
                 const length = questionTextarea.value.length;
                 charCounter.textContent = `${length} / ${MAX_QUESTION_LENGTH}`;
                 charCounter.classList.remove('warning', 'error');
                 if (length > MAX_QUESTION_LENGTH * 0.9) charCounter.classList.add('error');
                 else if (length > MAX_QUESTION_LENGTH * 0.7) charCounter.classList.add('warning');
+            }
+
+            nameInput.value = draft.name;
+            questionTextarea.value = draft.question;
+            updateCharCounter();
+            updateSubmitAvailability();
+
+            nameInput.addEventListener('input', () => {
+                draft.name = nameInput.value;
             });
-            
+
+            questionTextarea.addEventListener('input', () => {
+                draft.question = questionTextarea.value;
+                updateCharCounter();
+            });
+
             document.getElementById('questionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!checkRateLimit()) return;
 
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
-                const name = document.getElementById('name').value.trim() || 'Anonymous';
-                const questionText = document.getElementById('question').value.trim();
+                const name = nameInput.value.trim() || 'Anonymous';
+                const questionText = questionTextarea.value.trim();
 
                 if (questionText.length > MAX_QUESTION_LENGTH) {
                     messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
@@ -684,33 +815,23 @@
                         name,
                         question: questionText,
                         timestamp: Date.now(),
-                        status: 'pending'
+                        status: autoApprove ? 'approved' : 'pending'
                     });
 
                     setRateLimit();
                     messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
-                    document.getElementById('questionForm').reset();
-                    charCounter.textContent = `0 / ${MAX_QUESTION_LENGTH}`;
-                    setTimeout(() => renderAudienceView(), 2000);
+                    // Keep the name for their next question; clear only the question
+                    questionTextarea.value = '';
+                    draft.question = '';
+                    updateCharCounter();
+                    submitBtn.textContent = 'Submit Question';
+                    updateSubmitAvailability();
                 } catch (error) {
                     messageDiv.innerHTML = '<div class="error-message">Error submitting question.</div>';
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Question';
                 }
             });
-
-            if (!canSubmit) {
-                rateLimitInterval = setInterval(() => {
-                    const remaining = getRemainingSeconds();
-                    const display = document.getElementById('countdownDisplay');
-                    if (display) display.textContent = remaining;
-                    if (remaining <= 0) {
-                        clearInterval(rateLimitInterval);
-                        rateLimitInterval = null;
-                        renderAudienceView();
-                    }
-                }, 1000);
-            }
         }
         
         // Moderator login
@@ -778,8 +899,7 @@
         let currentFilter = 'all';
         let allQuestions = {};
         let sessionOpen = true;
-        let rateLimitInterval = null;
-        
+
         // Moderator view
         async function renderModeratorView() {
             if (checkSessionTimeout()) {
@@ -817,6 +937,18 @@
                             <button onclick="window.downloadQuestions()" class="btn-secondary">Download CSV</button>
                             <button onclick="window.showChangePassword()" class="btn-secondary">Change Password</button>
                         </div>
+                        <div class="settings-panel">
+                            <div class="setting-row">
+                                <button onclick="window.toggleAutoApprove()" id="autoApproveBtn" class="btn-secondary">Auto-approve: OFF</button>
+                                <span class="setting-hint">When ON, new questions go straight to the display. Turning it on also approves anything currently pending.</span>
+                            </div>
+                            <form class="setting-row" id="rateLimitForm">
+                                <label for="rateLimitInput">Seconds between questions</label>
+                                <input type="number" id="rateLimitInput" min="0" max="${MAX_RATE_LIMIT_SECONDS}" step="1" required value="${rateLimitSeconds}">
+                                <button type="submit" class="btn-secondary">Save</button>
+                                <span class="setting-hint" id="rateLimitStatus">0 = no limit. Applies to everyone immediately.</span>
+                            </form>
+                        </div>
                         <div class="moderator-controls">
                             <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
                             <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
@@ -829,9 +961,18 @@
                 </div>
             `;
             
+            document.getElementById('rateLimitForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                window.saveRateLimit();
+            });
+
             onValue(settingsRef, (snapshot) => {
-                sessionOpen = snapshot.val()?.sessionOpen !== false;
+                const settings = snapshot.val() || {};
+                sessionOpen = settings.sessionOpen !== false;
+                autoApprove = settings.autoApprove === true;
+                rateLimitSeconds = normalizeRateLimit(settings.rateLimitSeconds);
                 updateSessionUI();
+                updateSettingsUI();
             });
             
             onValue(questionsRef, (snapshot) => {
@@ -860,6 +1001,54 @@
             }
         }
         
+        function updateSettingsUI() {
+            const autoBtn = document.getElementById('autoApproveBtn');
+            const rateInput = document.getElementById('rateLimitInput');
+
+            if (autoBtn) {
+                autoBtn.textContent = autoApprove ? 'Auto-approve: ON' : 'Auto-approve: OFF';
+                autoBtn.className = autoApprove ? 'btn-success' : 'btn-secondary';
+            }
+            // Don't overwrite the box while the moderator is typing in it
+            if (rateInput && document.activeElement !== rateInput) {
+                rateInput.value = rateLimitSeconds;
+            }
+        }
+
+        window.toggleAutoApprove = async () => {
+            updateLastActivity();
+            const turningOn = !autoApprove;
+            const updates = { 'settings/autoApprove': turningOn };
+            if (turningOn) {
+                Object.entries(allQuestions).forEach(([id, q]) => {
+                    if (isValidQuestionId(id) && (q?.status || 'pending') === 'pending') {
+                        updates[`questions/${id}/status`] = 'approved';
+                    }
+                });
+            }
+            await update(ref(database), updates);
+        };
+
+        window.saveRateLimit = async () => {
+            updateLastActivity();
+            const input = document.getElementById('rateLimitInput');
+            const status = document.getElementById('rateLimitStatus');
+            const value = Number(input.value);
+
+            if (input.value.trim() === '' || !Number.isInteger(value) || value < 0 || value > MAX_RATE_LIMIT_SECONDS) {
+                status.textContent = `Enter a whole number from 0 to ${MAX_RATE_LIMIT_SECONDS}.`;
+                return;
+            }
+
+            try {
+                await set(ref(database, 'settings/rateLimitSeconds'), value);
+                status.textContent = `✓ Saved: ${value === 0 ? 'no limit' : value + ' seconds'} between questions.`;
+            } catch (err) {
+                console.error('Save rate limit error:', err);
+                status.textContent = 'Could not save. Check your connection and try again.';
+            }
+        };
+
         window.logout = () => {
             sessionStorage.removeItem('moderatorAuth');
             sessionStorage.removeItem('lastActivity');
@@ -1189,8 +1378,10 @@
                 if (approved.length === 0) {
                     host.innerHTML = `
                         <div class="display-question">
-                            <div class="display-question-text">No approved questions yet.</div>
-                            <div class="display-question-name">Waiting for moderator…</div>
+                            <div class="display-question-body">
+                                <div class="display-question-text">No approved questions yet.</div>
+                                <div class="display-question-name">Waiting for questions…</div>
+                            </div>
                         </div>
                     `;
                     return;
@@ -1201,11 +1392,11 @@
                     const safeId = escapeJsString(q.id);
                     return `
                         <div class="display-question">
-                            <div class="display-question-text">${escapeHtml(q.question || '')}</div>
-                            <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
-                            <div style="margin-top: 16px; text-align: right;">
-                                <button onclick="window.markAnswered('${safeId}')" class="btn-success" style="font-size: 16px; padding: 10px 24px;">&#10003; Mark Answered</button>
+                            <div class="display-question-body">
+                                <div class="display-question-text">${escapeHtml(q.question || '')}</div>
+                                <div class="display-question-name">— ${escapeHtml(q.name || 'Anonymous')}</div>
                             </div>
+                            <button onclick="window.markAnswered('${safeId}')" class="btn-tick" title="Mark answered" aria-label="Mark answered">&#10003;</button>
                         </div>
                     `;
                 }).join('');
@@ -1239,14 +1430,29 @@
             return renderAudienceView();
         }
 
+        // Only take over the screen for errors during startup. Once running, a transient
+        // failure (e.g. a Wi-Fi blip when tapping Mark Answered) is just logged, so the
+        // live display / dashboard stays up and recovers when the connection returns.
+        let appStarted = false;
+
         window.addEventListener('error', (e) => {
+            if (appStarted) {
+                console.error('Uncaught error:', e.error || e.message);
+                return;
+            }
             renderFatalError('Uncaught error', e.error || e.message);
         });
         window.addEventListener('unhandledrejection', (e) => {
+            if (appStarted) {
+                console.error('Unhandled promise rejection:', e.reason);
+                return;
+            }
             renderFatalError('Unhandled promise rejection', e.reason);
         });
 
-        bootstrap().catch((err) => renderFatalError('Failed to start app', err));
+        bootstrap()
+            .then(() => { appStarted = true; })
+            .catch((err) => renderFatalError('Failed to start app', err));
     </script>
 </body>
 </html>
