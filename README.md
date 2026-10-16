@@ -16,6 +16,17 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 
 ---
 
+## Live Test URLS
+Test links for Branch: audience-improvements (these run the new version):
+
+| View | URL |
+|------|-----|
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html |
+| Moderator |https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html?display=true |
+
+
+
 ## Testing Locally
 
 The app cannot be opened via `file://` (Firebase SDK uses ES modules which browsers block on the file protocol). Use any simple local web server instead — the app talks directly to the live Firebase database regardless of where it is hosted, so all real-time features work exactly as in production.
