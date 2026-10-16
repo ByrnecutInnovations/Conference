@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q&amp;A App — Moderator Quick Guide</title>
+<style>
+    body {
+        margin: 0;
+        padding: 24px 16px;
+        background: #f4f4f4;
+        color: #2D2D2D;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+    }
+    .page {
+        max-width: 760px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    header {
+        background: #F5A623;
+        padding: 24px 28px;
+    }
+    header h1 {
+        margin: 0 0 4px;
+        font-size: 24px;
+    }
+    header p {
+        margin: 0;
+        font-size: 14px;
+    }
+    main {
+        padding: 8px 28px 28px;
+    }
+    h2 {
+        margin: 28px 0 8px;
+        padding-bottom: 6px;
+        font-size: 18px;
+        border-bottom: 3px solid #F5A623;
+    }
+    a {
+        color: #0b5cad;
+        word-break: break-all;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 14px;
+    }
+    th, td {
+        padding: 9px 10px;
+        border: 1px solid #e0e0e0;
+        text-align: left;
+        vertical-align: top;
+    }
+    th {
+        background: #fdf1dc;
+    }
+    .note {
+        padding: 12px 14px;
+        border-left: 4px solid #F5A623;
+        background: #fdf6ea;
+        border-radius: 4px;
+    }
+    ul.checklist {
+        list-style: none;
+        padding-left: 0;
+    }
+    ul.checklist li {
+        position: relative;
+        margin: 8px 0;
+        padding-left: 30px;
+    }
+    ul.checklist li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #2D2D2D;
+        border-radius: 3px;
+    }
+    ol li {
+        margin: 6px 0;
+    }
+    .tick {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #28a745;
+        color: #fff;
+        font-size: 13px;
+        line-height: 20px;
+        text-align: center;
+    }
+    footer {
+        padding: 14px 28px;
+        background: #fafafa;
+        border-top: 1px solid #eee;
+        font-size: 12px;
+        color: #666;
+    }
+    @media print {
+        body { background: #fff; padding: 0; }
+        .page { box-shadow: none; }
+    }
+</style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <h1>Q&amp;A App — Moderator Quick Guide</h1>
+        <p>Byrnecut conference Q&amp;A · October 2026</p>
+    </header>
+
+    <main>
+        <h2>Links and login</h2>
+        <p>You run the Q&amp;A from the <strong>Moderator</strong> page. The audience scans a QR code to the <strong>Audience</strong> page, and the projector shows the <strong>Display</strong> page.</p>
+        <table>
+            <tr><th>Page</th><th>Who uses it</th><th>Link</th></tr>
+            <tr><td><strong>Moderator</strong></td><td>You (password protected)</td><td><a href="https://byrnecutinnovations.github.io/Conference/?moderator=true">byrnecutinnovations.github.io/Conference/?moderator=true</a></td></tr>
+            <tr><td><strong>Display</strong></td><td>Projector / presenter screen</td><td><a href="https://byrnecutinnovations.github.io/Conference/?display=true">byrnecutinnovations.github.io/Conference/?display=true</a></td></tr>
+            <tr><td><strong>Audience</strong></td><td>Attendees, via QR code</td><td><a href="https://byrnecutinnovations.github.io/Conference/">byrnecutinnovations.github.io/Conference/</a></td></tr>
+        </table>
+        <p class="note"><strong>Moderator password:</strong> sent to you separately. Please don't forward it or write it on shared screens.</p>
+        <p>Your login lasts until you close the browser tab or click <strong>Logout</strong>. If the page sits idle for more than 30 minutes and is then reloaded, you'll be asked to log in again.</p>
+
+        <h2>Before the session</h2>
+        <p>Allow 10 minutes before the talk to set up and do one test question.</p>
+        <ul class="checklist">
+            <li>Open the <strong>Moderator</strong> link on your laptop or tablet and log in.</li>
+            <li>Open the <strong>Display</strong> link on the projector computer and make it full screen (press F11).</li>
+            <li>Check the question list is empty. If old questions are showing, click <strong>Archive &amp; Clear All</strong>.</li>
+            <li>Choose <strong>Auto-approve</strong>: leave it <strong>OFF</strong> if you'll review questions, or turn it <strong>ON</strong> if you're also presenting or can't watch the dashboard. New questions then go straight to the display.</li>
+            <li>Check <strong>Seconds between questions</strong> (default 30). Lower it, or set 0 for no limit, if people want to ask several questions quickly.</li>
+            <li>Click <strong>Open Session</strong>. The dot turns green and audience phones switch to the question form automatically.</li>
+            <li>Scan the QR code on your own phone, submit a test question, then delete it from the dashboard.</li>
+        </ul>
+
+        <h2>During the session</h2>
+        <p>Each question moves from <strong>Pending</strong> to <strong>Approved</strong> (on the display) to <strong>Answered</strong> (off the display). Everything updates live, so there's no need to refresh.</p>
+        <table>
+            <tr><th>You want to…</th><th>Do this</th></tr>
+            <tr><td>Put a question on the display</td><td>Click <strong>Approve</strong> on its card (the Pending filter shows only new ones).</td></tr>
+            <tr><td>Remove an unsuitable question</td><td>Click <strong>Reject</strong> (or <strong>Delete</strong> once approved). This deletes it permanently.</td></tr>
+            <tr><td>Clear a question once it's been asked</td><td>Click <strong>Mark Answered</strong> on the dashboard, or the round <span class="tick">&#10003;</span> next to the question on the display.</td></tr>
+            <tr><td>Stop reviewing (e.g. you're also presenting)</td><td>Turn <strong>Auto-approve</strong> ON. Anything still pending is approved at once.</td></tr>
+            <tr><td>Let people ask faster or slow them down</td><td>Change <strong>Seconds between questions</strong> and click <strong>Save</strong>. It applies to every phone immediately.</td></tr>
+            <tr><td>Stop new questions</td><td>Click <strong>Close Session</strong>. Phones show "Submission Closed"; the display keeps showing approved questions.</td></tr>
+        </table>
+        <p>The display lists approved questions oldest first, so the top card is the next one to ask.</p>
+
+        <h2>After the session</h2>
+        <p>Do these in order, because the download needs the questions to still be on the dashboard.</p>
+        <ol>
+            <li>Click <strong>Close Session</strong> so no new questions come in.</li>
+            <li>Click <strong>Download CSV</strong> to save a copy of all questions (opens in Excel).</li>
+            <li>Click <strong>Archive &amp; Clear All</strong> to store this session's questions and empty the list for next time.</li>
+            <li>Turn <strong>Auto-approve</strong> OFF if you turned it on, so the next moderator starts with reviewing switched on.</li>
+            <li>Click <strong>Logout</strong>.</li>
+        </ol>
+
+        <h2>Troubleshooting</h2>
+        <table>
+            <tr><th>Problem</th><th>Fix</th></tr>
+            <tr><td>Audience phones say "Submission Closed"</td><td>Click <strong>Open Session</strong> on the dashboard. Phones update by themselves within a few seconds.</td></tr>
+            <tr><td>Someone can't submit and sees a countdown</td><td>That's the gap between questions. They can keep typing; Submit turns back on when the countdown ends. Lower <strong>Seconds between questions</strong> if it's too slow.</td></tr>
+            <tr><td>A question isn't on the display</td><td>Check it's <strong>Approved</strong> on the dashboard, not still Pending.</td></tr>
+            <tr><td>"Incorrect password"</td><td>Check caps lock and re-type. Still failing: contact the app owner.</td></tr>
+            <tr><td>Page is blank, stuck on "Connecting…", or shows "App error"</td><td>Reload the page (Ctrl+F5 on a PC). Check the device is on the internet; some guest Wi-Fi networks block it, so try mobile data.</td></tr>
+            <tr><td>Clicking a button does nothing</td><td>Usually a dropped connection. Wait a few seconds and try again; it recovers once the connection is back.</td></tr>
+        </table>
+    </main>
+
+    <footer>Questions about the app? Contact the app owner.</footer>
+</div>
+</body>
+</html>
