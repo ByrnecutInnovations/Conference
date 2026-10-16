@@ -59,8 +59,9 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 
 ### Audience view (default)
 - Attendees enter an optional name and their question (max 500 characters)
-- Submissions are rate-limited to one question per minute per browser
-- The page automatically re-enables the form when the cooldown expires
+- Submissions are rate-limited to one question per 30 seconds per browser (`RATE_LIMIT_SECONDS`)
+- During the cooldown attendees can keep typing their next question; Submit re-enables automatically when it expires
+- The page switches between open/closed live when the moderator opens or closes the session — no reload or QR re-scan needed
 - Questions go into Firebase with status `pending`
 
 ### Moderator view (`?moderator=true`)

@@ -436,7 +436,7 @@
         const isDisplay = urlParams.get('display') === 'true';
         
         const MAX_QUESTION_LENGTH = 500;
-        const RATE_LIMIT_MINUTES = 1;
+        const RATE_LIMIT_SECONDS = 30;
         const SESSION_TIMEOUT_MINUTES = 30;
         const MIN_PASSWORD_LENGTH = 8;
         const MAX_PASSWORD_LENGTH = 128;
@@ -505,31 +505,20 @@
         }
         
         // Rate limiting
-        function checkRateLimit() {
-            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
-            if (!lastSubmit) return true;
-            const timeSince = Date.now() - parseInt(lastSubmit);
-            return timeSince / (1000 * 60) >= RATE_LIMIT_MINUTES;
-        }
-        
-        function setRateLimit() {
-            localStorage.setItem('lastQuestionSubmit', Date.now().toString());
-        }
-        
-        function getRemainingTime() {
-            const lastSubmit = localStorage.getItem('lastQuestionSubmit');
-            if (!lastSubmit) return 0;
-            const timeSince = Date.now() - parseInt(lastSubmit);
-            const remaining = RATE_LIMIT_MINUTES - (timeSince / (1000 * 60));
-            return Math.max(0, Math.ceil(remaining));
-        }
-
         function getRemainingSeconds() {
             const lastSubmit = localStorage.getItem('lastQuestionSubmit');
             if (!lastSubmit) return 0;
             const timeSince = Date.now() - parseInt(lastSubmit);
-            const remaining = (RATE_LIMIT_MINUTES * 60 * 1000) - timeSince;
+            const remaining = (RATE_LIMIT_SECONDS * 1000) - timeSince;
             return Math.max(0, Math.ceil(remaining / 1000));
+        }
+
+        function checkRateLimit() {
+            return getRemainingSeconds() === 0;
+        }
+
+        function setRateLimit() {
+            localStorage.setItem('lastQuestionSubmit', Date.now().toString());
         }
         
         // Modal management
@@ -572,12 +561,6 @@
             };
         }
         
-        async function isSessionOpen() {
-            const snapshot = await get(settingsRef);
-            const settings = snapshot.val();
-            return settings?.sessionOpen !== false;
-        }
-        
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -593,38 +576,88 @@
         }
         
         // Audience view
-        async function renderAudienceView() {
+        let audienceSessionOpen = null;
+        let rateLimitInterval = null;
+        // Survives re-renders (e.g. session closed then reopened) so typed text isn't lost
+        const draft = { name: '', question: '' };
+
+        function renderAudienceView() {
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Q&A Session</h1>
+                    </div>
+                    <div class="content">
+                        <div class="loading">Connecting...</div>
+                    </div>
+                </div>
+            `;
+
+            // Live listener so the page switches between open/closed without a reload
+            onValue(ref(database, 'settings/sessionOpen'), (snapshot) => {
+                const open = snapshot.val() !== false;
+                if (open === audienceSessionOpen) return;
+                audienceSessionOpen = open;
+                if (open) renderQuestionForm();
+                else renderClosedView();
+            }, (error) => renderFatalError('Could not connect to the Q&A session', error));
+        }
+
+        function renderClosedView() {
             if (rateLimitInterval) {
                 clearInterval(rateLimitInterval);
                 rateLimitInterval = null;
             }
 
-            const sessionOpen = await isSessionOpen();
-            
-            if (!sessionOpen) {
-                appDiv.innerHTML = `
-                    <div class="container">
-                        <div class="header">
-                            <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
-                            <h1>Q&A Session</h1>
-                        </div>
-                        <div class="content">
-                            <div class="closed-message">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <h2>Question Submission Closed</h2>
-                                <p>The Q&A session is not currently accepting questions.</p>
-                            </div>
+            appDiv.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Q&A Session</h1>
+                    </div>
+                    <div class="content">
+                        <div class="closed-message">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            <h2>Question Submission Closed</h2>
+                            <p>The Q&A session is not currently accepting questions.</p>
+                            <p>This page will update automatically when the session opens.</p>
                         </div>
                     </div>
-                `;
-                return;
+                </div>
+            `;
+        }
+
+        // Enables/disables Submit based on the cooldown, without touching what the user has typed
+        function updateSubmitAvailability() {
+            if (rateLimitInterval) {
+                clearInterval(rateLimitInterval);
+                rateLimitInterval = null;
             }
-            
-            const canSubmit = checkRateLimit();
-            const remainingTime = getRemainingTime();
-            
+
+            const submitBtn = document.getElementById('submitBtn');
+            const waitMessage = document.getElementById('waitMessage');
+            const countdown = document.getElementById('countdownDisplay');
+            if (!submitBtn || !waitMessage || !countdown) return;
+
+            const tick = () => {
+                const remaining = getRemainingSeconds();
+                countdown.textContent = remaining;
+                waitMessage.hidden = remaining === 0;
+                submitBtn.disabled = remaining > 0;
+                if (remaining === 0 && rateLimitInterval) {
+                    clearInterval(rateLimitInterval);
+                    rateLimitInterval = null;
+                }
+            };
+
+            tick();
+            if (getRemainingSeconds() > 0) rateLimitInterval = setInterval(tick, 1000);
+        }
+
+        function renderQuestionForm() {
             appDiv.innerHTML = `
                 <div class="container">
                     <div class="header">
@@ -643,33 +676,48 @@
                                 <textarea id="question" placeholder="Type your question here..." required maxlength="${MAX_QUESTION_LENGTH}"></textarea>
                                 <div class="char-counter" id="charCounter">0 / ${MAX_QUESTION_LENGTH}</div>
                             </div>
-                            ${!canSubmit ? `<div class="info-message">Please wait <span id="countdownDisplay">${getRemainingSeconds()}</span> second(s) before submitting another question.</div>` : ''}
-                            <button type="submit" id="submitBtn" ${!canSubmit ? 'disabled' : ''}>Submit Question</button>
+                            <div class="info-message" id="waitMessage" hidden>You can submit another question in <span id="countdownDisplay"></span> second(s). Feel free to start typing it now.</div>
+                            <button type="submit" id="submitBtn">Submit Question</button>
                             <div id="message"></div>
                         </form>
                     </div>
                 </div>
             `;
-            
+
+            const nameInput = document.getElementById('name');
             const questionTextarea = document.getElementById('question');
             const charCounter = document.getElementById('charCounter');
-            
-            questionTextarea.addEventListener('input', () => {
+
+            function updateCharCounter() {
                 const length = questionTextarea.value.length;
                 charCounter.textContent = `${length} / ${MAX_QUESTION_LENGTH}`;
                 charCounter.classList.remove('warning', 'error');
                 if (length > MAX_QUESTION_LENGTH * 0.9) charCounter.classList.add('error');
                 else if (length > MAX_QUESTION_LENGTH * 0.7) charCounter.classList.add('warning');
+            }
+
+            nameInput.value = draft.name;
+            questionTextarea.value = draft.question;
+            updateCharCounter();
+            updateSubmitAvailability();
+
+            nameInput.addEventListener('input', () => {
+                draft.name = nameInput.value;
             });
-            
+
+            questionTextarea.addEventListener('input', () => {
+                draft.question = questionTextarea.value;
+                updateCharCounter();
+            });
+
             document.getElementById('questionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!checkRateLimit()) return;
 
                 const submitBtn = document.getElementById('submitBtn');
                 const messageDiv = document.getElementById('message');
-                const name = document.getElementById('name').value.trim() || 'Anonymous';
-                const questionText = document.getElementById('question').value.trim();
+                const name = nameInput.value.trim() || 'Anonymous';
+                const questionText = questionTextarea.value.trim();
 
                 if (questionText.length > MAX_QUESTION_LENGTH) {
                     messageDiv.innerHTML = '<div class="error-message">Question is too long.</div>';
@@ -689,28 +737,18 @@
 
                     setRateLimit();
                     messageDiv.innerHTML = '<div class="success-message">✓ Question submitted successfully!</div>';
-                    document.getElementById('questionForm').reset();
-                    charCounter.textContent = `0 / ${MAX_QUESTION_LENGTH}`;
-                    setTimeout(() => renderAudienceView(), 2000);
+                    // Keep the name for their next question; clear only the question
+                    questionTextarea.value = '';
+                    draft.question = '';
+                    updateCharCounter();
+                    submitBtn.textContent = 'Submit Question';
+                    updateSubmitAvailability();
                 } catch (error) {
                     messageDiv.innerHTML = '<div class="error-message">Error submitting question.</div>';
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Question';
                 }
             });
-
-            if (!canSubmit) {
-                rateLimitInterval = setInterval(() => {
-                    const remaining = getRemainingSeconds();
-                    const display = document.getElementById('countdownDisplay');
-                    if (display) display.textContent = remaining;
-                    if (remaining <= 0) {
-                        clearInterval(rateLimitInterval);
-                        rateLimitInterval = null;
-                        renderAudienceView();
-                    }
-                }, 1000);
-            }
         }
         
         // Moderator login
@@ -778,8 +816,7 @@
         let currentFilter = 'all';
         let allQuestions = {};
         let sessionOpen = true;
-        let rateLimitInterval = null;
-        
+
         // Moderator view
         async function renderModeratorView() {
             if (checkSessionTimeout()) {
@@ -1239,14 +1276,29 @@
             return renderAudienceView();
         }
 
+        // Only take over the screen for errors during startup. Once running, a transient
+        // failure (e.g. a Wi-Fi blip when tapping Mark Answered) is just logged, so the
+        // live display / dashboard stays up and recovers when the connection returns.
+        let appStarted = false;
+
         window.addEventListener('error', (e) => {
+            if (appStarted) {
+                console.error('Uncaught error:', e.error || e.message);
+                return;
+            }
             renderFatalError('Uncaught error', e.error || e.message);
         });
         window.addEventListener('unhandledrejection', (e) => {
+            if (appStarted) {
+                console.error('Unhandled promise rejection:', e.reason);
+                return;
+            }
             renderFatalError('Unhandled promise rejection', e.reason);
         });
 
-        bootstrap().catch((err) => renderFatalError('Failed to start app', err));
+        bootstrap()
+            .then(() => { appStarted = true; })
+            .catch((err) => renderFatalError('Failed to start app', err));
     </script>
 </body>
 </html>
