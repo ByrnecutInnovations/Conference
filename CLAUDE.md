@@ -37,7 +37,7 @@ archive/session_<ts>/ {timestamp, date, questions}
 
 - All views subscribe with `onValue(...)` so everything updates live — keep new features live too (no reload required).
 - Branch test links (raw.githack.com) and local servers hit the **same production database**. Avoid destructive test actions (e.g. Archive & Clear) while a real session is running.
-- Database security rules live in the Firebase Console, not this repo. A new top-level node may need a rules update if writes fail with `PERMISSION_DENIED`.
+- Database security rules live in the Firebase Console (Realtime Database → Rules). A local copy is kept in `firebase-rules.json`, which is **git-ignored** (not published). Any new top-level node needs a rules entry or writes fail with `PERMISSION_DENIED` — edit `firebase-rules.json`, paste it into the Console, Publish.
 
 ## Conventions
 

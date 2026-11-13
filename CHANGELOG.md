@@ -12,6 +12,8 @@ Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](ht
 - Display view shows points in a side panel next to the questions (stacked above them below 1000px wide).
 - New Firebase node `discussion/` (`showOnAudience`, `showOnDisplay`, `points/<id>/{text, order}`).
 - `CLAUDE.md` (project notes for AI-assisted editing) and this `CHANGELOG.md`.
+- `.gitignore` — keeps the local Firebase rules copy (`firebase-rules.json`) and `.vscode/` out of the repo.
+- Firebase rules: new `discussion` block (booleans for the toggles; points need `text` 1–200 chars and numeric `order`). Must be published manually in the Firebase Console.
 
 ### Changed
 - README: documented discussion points, new database node, and test links now point at the `discussion-points` branch.
