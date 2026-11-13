@@ -450,6 +450,109 @@
             font-size: 28px;
             line-height: 1;
         }
+
+        /* ---- Discussion points ---- */
+        .discussion-panel {
+            border-left: 4px solid #F5A623;
+            background: #fdf6ea;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+
+        .discussion-panel summary {
+            font-weight: 700;
+            color: #2D2D2D;
+            cursor: pointer;
+        }
+
+        .discussion-panel ul {
+            margin: 10px 0 0;
+            padding-left: 22px;
+        }
+
+        .discussion-panel li {
+            margin: 6px 0;
+            line-height: 1.45;
+            color: #2D2D2D;
+            overflow-wrap: anywhere;
+        }
+
+        .discussion-admin-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .discussion-admin-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .discussion-admin-list .point-text {
+            flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .discussion-admin-list button {
+            padding: 4px 10px;
+            font-size: 14px;
+        }
+
+        .discussion-add-row input {
+            flex: 1;
+            min-width: 180px;
+            width: auto;
+        }
+
+        .display-layout.with-discussion {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) 2fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .display-container.wide {
+            max-width: 1700px;
+        }
+
+        .display-discussion {
+            background: #3a3a3a;
+            border-radius: 12px;
+            padding: 30px;
+            border-top: 6px solid #F5A623;
+            color: white;
+        }
+
+        .display-discussion h2 {
+            color: #F5A623;
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .display-discussion ul {
+            padding-left: 28px;
+        }
+
+        .display-discussion li {
+            font-size: 26px;
+            line-height: 1.4;
+            margin: 12px 0;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 1000px) {
+            .display-layout.with-discussion {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -484,7 +587,8 @@
         const questionsRef = ref(database, 'questions');
         const settingsRef = ref(database, 'settings');
         const archiveRef = ref(database, 'archive');
-        
+        const discussionRef = ref(database, 'discussion');
+
         const appDiv = document.getElementById('app');
         const urlParams = new URLSearchParams(window.location.search);
         const isModerator = urlParams.get('moderator') === 'true';
@@ -496,7 +600,9 @@
         const SESSION_TIMEOUT_MINUTES = 30;
         const MIN_PASSWORD_LENGTH = 8;
         const MAX_PASSWORD_LENGTH = 128;
-        
+        const MAX_DISCUSSION_POINT_LENGTH = 200;
+        const DISCUSSION_TITLE = 'Discussion Points';
+
        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='67.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='132.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         // Session timeout management
         function updateLastActivity() {
@@ -641,6 +747,44 @@
             return typeof id === 'string' && id.length > 0 && id.length < 200 && /^[a-zA-Z0-9_-]+$/.test(id);
         }
         
+        // Discussion points (discussion/ in Firebase), shared by all three views
+        let discussion = { showOnAudience: false, showOnDisplay: false, points: [] };
+
+        function normalizeDiscussion(data) {
+            data = data || {};
+            const points = Object.entries(data.points || {})
+                .filter(([id, p]) => isValidQuestionId(id) && p && typeof p.text === 'string' && p.text.trim())
+                .map(([id, p]) => ({ id, text: p.text, order: Number(p.order) || 0 }))
+                .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+            return {
+                showOnAudience: data.showOnAudience === true,
+                showOnDisplay: data.showOnDisplay === true,
+                points
+            };
+        }
+
+        function discussionListHtml() {
+            return `<ul>${discussion.points.map(p => `<li>${escapeHtml(p.text)}</li>`).join('')}</ul>`;
+        }
+
+        // Audience view: collapsible panel (open by default) so it doesn't push the form off a phone screen
+        function updateAudienceDiscussion() {
+            const host = document.getElementById('audienceDiscussion');
+            if (!host) return;
+            if (!discussion.showOnAudience || discussion.points.length === 0) {
+                host.innerHTML = '';
+                return;
+            }
+            const existing = host.querySelector('details');
+            const wasOpen = existing ? existing.open : true;
+            host.innerHTML = `
+                <details class="discussion-panel"${wasOpen ? ' open' : ''}>
+                    <summary>${DISCUSSION_TITLE} (${discussion.points.length})</summary>
+                    ${discussionListHtml()}
+                </details>
+            `;
+        }
+
         // Audience view
         let audienceSessionOpen = null;
         let rateLimitInterval = null;
@@ -679,6 +823,10 @@
                 const note = document.getElementById('reviewNote');
                 if (note) note.textContent = reviewNoteText();
             });
+            onValue(discussionRef, (snapshot) => {
+                discussion = normalizeDiscussion(snapshot.val());
+                updateAudienceDiscussion();
+            });
         }
 
         function reviewNoteText() {
@@ -700,6 +848,7 @@
                         <h1>Q&A Session</h1>
                     </div>
                     <div class="content">
+                        <div id="audienceDiscussion"></div>
                         <div class="closed-message">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
@@ -711,6 +860,7 @@
                     </div>
                 </div>
             `;
+            updateAudienceDiscussion();
         }
 
         // Enables/disables Submit based on the cooldown, without touching what the user has typed
@@ -749,6 +899,7 @@
                         <p id="reviewNote">${reviewNoteText()}</p>
                     </div>
                     <div class="content">
+                        <div id="audienceDiscussion"></div>
                         <form class="question-form" id="questionForm">
                             <div class="form-group">
                                 <label for="name">Your Name (Optional)</label>
@@ -783,6 +934,7 @@
             questionTextarea.value = draft.question;
             updateCharCounter();
             updateSubmitAvailability();
+            updateAudienceDiscussion();
 
             nameInput.addEventListener('input', () => {
                 draft.name = nameInput.value;
@@ -949,6 +1101,20 @@
                                 <span class="setting-hint" id="rateLimitStatus">0 = no limit. Applies to everyone immediately.</span>
                             </form>
                         </div>
+                        <div class="settings-panel" id="discussionPanel">
+                            <label>${DISCUSSION_TITLE}</label>
+                            <div class="setting-row">
+                                <button onclick="window.toggleDiscussion('showOnAudience')" id="discussionAudienceBtn" class="btn-secondary">Show on Audience: OFF</button>
+                                <button onclick="window.toggleDiscussion('showOnDisplay')" id="discussionDisplayBtn" class="btn-secondary">Show on Display: OFF</button>
+                            </div>
+                            <span class="setting-hint">Turn on for phones, the big screen, or both. Points are kept until you delete them (Archive &amp; Clear does not remove them).</span>
+                            <form class="setting-row discussion-add-row" id="discussionAddForm">
+                                <input type="text" id="discussionInput" placeholder="Add a discussion point..." maxlength="${MAX_DISCUSSION_POINT_LENGTH}" required>
+                                <button type="submit" class="btn-secondary">Add</button>
+                            </form>
+                            <span class="setting-hint" id="discussionStatus"></span>
+                            <ul class="discussion-admin-list" id="discussionAdminList"></ul>
+                        </div>
                         <div class="moderator-controls">
                             <button onclick="window.filterQuestions('all')" id="filterAll">All Questions</button>
                             <button onclick="window.filterQuestions('pending')" id="filterPending">Pending</button>
@@ -964,6 +1130,16 @@
             document.getElementById('rateLimitForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 window.saveRateLimit();
+            });
+
+            document.getElementById('discussionAddForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                window.addDiscussionPoint();
+            });
+
+            onValue(discussionRef, (snapshot) => {
+                discussion = normalizeDiscussion(snapshot.val());
+                updateDiscussionAdminUI();
             });
 
             onValue(settingsRef, (snapshot) => {
@@ -1047,6 +1223,86 @@
                 console.error('Save rate limit error:', err);
                 status.textContent = 'Could not save. Check your connection and try again.';
             }
+        };
+
+        function updateDiscussionAdminUI() {
+            const audBtn = document.getElementById('discussionAudienceBtn');
+            const dispBtn = document.getElementById('discussionDisplayBtn');
+            const list = document.getElementById('discussionAdminList');
+            if (!audBtn || !dispBtn || !list) return;
+
+            audBtn.textContent = `Show on Audience: ${discussion.showOnAudience ? 'ON' : 'OFF'}`;
+            audBtn.className = discussion.showOnAudience ? 'btn-success' : 'btn-secondary';
+            dispBtn.textContent = `Show on Display: ${discussion.showOnDisplay ? 'ON' : 'OFF'}`;
+            dispBtn.className = discussion.showOnDisplay ? 'btn-success' : 'btn-secondary';
+
+            if (discussion.points.length === 0) {
+                list.innerHTML = '<li><span class="point-text setting-hint">No discussion points yet.</span></li>';
+                return;
+            }
+
+            const last = discussion.points.length - 1;
+            list.innerHTML = discussion.points.map((p, i) => {
+                const safeId = escapeJsString(p.id);
+                return `
+                    <li>
+                        <span class="point-text">&bull; ${escapeHtml(p.text)}</span>
+                        <button class="btn-secondary" onclick="window.moveDiscussionPoint('${safeId}', -1)" ${i === 0 ? 'disabled' : ''} title="Move up" aria-label="Move up">&uarr;</button>
+                        <button class="btn-secondary" onclick="window.moveDiscussionPoint('${safeId}', 1)" ${i === last ? 'disabled' : ''} title="Move down" aria-label="Move down">&darr;</button>
+                        <button class="btn-reject" onclick="window.deleteDiscussionPoint('${safeId}')" title="Delete" aria-label="Delete">&times;</button>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        window.toggleDiscussion = async (key) => {
+            updateLastActivity();
+            if (key !== 'showOnAudience' && key !== 'showOnDisplay') return;
+            await set(ref(database, `discussion/${key}`), !discussion[key]);
+        };
+
+        window.addDiscussionPoint = async () => {
+            updateLastActivity();
+            const input = document.getElementById('discussionInput');
+            const status = document.getElementById('discussionStatus');
+            const text = input.value.trim();
+            if (!text) return;
+            if (text.length > MAX_DISCUSSION_POINT_LENGTH) {
+                status.textContent = `Keep each point under ${MAX_DISCUSSION_POINT_LENGTH} characters.`;
+                return;
+            }
+            const maxOrder = discussion.points.reduce((m, p) => Math.max(m, p.order), 0);
+            try {
+                await set(push(ref(database, 'discussion/points')), { text, order: maxOrder + 1 });
+                input.value = '';
+                status.textContent = '';
+                input.focus();
+            } catch (err) {
+                console.error('Add discussion point error:', err);
+                status.textContent = 'Could not save. Check your connection and try again.';
+            }
+        };
+
+        window.moveDiscussionPoint = async (id, direction) => {
+            updateLastActivity();
+            const i = discussion.points.findIndex(p => p.id === id);
+            const j = i + direction;
+            if (i < 0 || j < 0 || j >= discussion.points.length) return;
+            // Renumber the whole list so duplicate/missing order values can't cause a no-op swap
+            const reordered = discussion.points.slice();
+            [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
+            const updates = {};
+            reordered.forEach((p, k) => { updates[`discussion/points/${p.id}/order`] = k + 1; });
+            await update(ref(database), updates);
+        };
+
+        window.deleteDiscussionPoint = (id) => {
+            updateLastActivity();
+            if (!isValidQuestionId(id)) return;
+            const point = discussion.points.find(p => p.id === id);
+            showModal('Delete discussion point', `Remove "${point ? point.text : 'this point'}"?`, async () => {
+                await remove(ref(database, `discussion/points/${id}`));
+            });
         };
 
         window.logout = () => {
@@ -1360,13 +1616,27 @@
                             <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
                             <div class="display-title">Q&A</div>
                         </div>
-                        <div id="displayQuestions"></div>
+                        <div class="display-layout" id="displayLayout">
+                            <aside class="display-discussion" id="displayDiscussion" hidden></aside>
+                            <div id="displayQuestions"></div>
+                        </div>
                     </div>
                 </div>
             `;
 
             const host = document.getElementById('displayQuestions');
             host.innerHTML = '<div class="loading">Loading questions...</div>';
+
+            onValue(discussionRef, (snapshot) => {
+                discussion = normalizeDiscussion(snapshot.val());
+                const layout = document.getElementById('displayLayout');
+                const panel = document.getElementById('displayDiscussion');
+                const show = discussion.showOnDisplay && discussion.points.length > 0;
+                layout.classList.toggle('with-discussion', show);
+                layout.parentElement.classList.toggle('wide', show);
+                panel.hidden = !show;
+                panel.innerHTML = show ? `<h2>${DISCUSSION_TITLE}</h2>${discussionListHtml()}` : '';
+            });
 
             onValue(questionsRef, (snapshot) => {
                 const data = snapshot.val() || {};
