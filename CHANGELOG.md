@@ -3,7 +3,11 @@
 All notable changes to the Byrnecut Conference Q&A app are recorded here.
 Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased] — branch `discussion-points`
+## [Unreleased]
+
+_Nothing yet._
+
+## 2026-11-14 — Discussion points (branch `discussion-points`)
 
 ### Added
 - **Discussion Points** panel on the Moderator dashboard: add bullet points, reorder them (↑/↓), delete them (with confirmation).
@@ -16,8 +20,8 @@ Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](ht
 - Firebase rules: new `discussion` block (booleans for the toggles; points need `text` 1–200 chars and numeric `order`). Must be published manually in the Firebase Console.
 
 ### Changed
-- README: documented discussion points, new database node, and test links now point at the `discussion-points` branch.
-- Moderator Quick Guide: added discussion point steps to before / during / after the session.
+- README: documented discussion points and the new database node; test links section is now a generic `<branch>` template.
+- Moderator Quick Guide: added discussion point steps to before / during / after the session; date updated to November 2026.
 
 ### Notes
 - Discussion points are **not** cleared by *Archive & Clear All* — they persist until deleted.

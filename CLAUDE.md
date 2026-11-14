@@ -67,4 +67,5 @@ There are no automated tests — verify by hand across all three views.
 2. Make changes; update `README.md`, `Moderator-Quick-Guide.html` (if moderator-facing) and `CHANGELOG.md` (under *Unreleased*).
 3. Update the README "Live Test URLS" to the new branch name, push, and test via
    `https://raw.githack.com/ByrnecutInnovations/Conference/<branch>/index.html`.
-4. Open a PR into `main`; merge once tested. On merge, date the *Unreleased* changelog section.
+4. Open a PR into `main` (or merge locally with `git merge --no-ff`); merge once tested. On merge, date the *Unreleased* changelog section and reset the README test links to the `<branch>` template.
+5. If the change needs new Firebase rules, publish them in the Console **before** merging, otherwise the live site will fail to save.

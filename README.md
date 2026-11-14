@@ -17,15 +17,15 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 ---
 
 ## Live Test URLS
-Test links for Branch: discussion-points (these run the new version):
+No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-points/index.html |
-| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-points/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-points/index.html?display=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
 
-To test a different branch, replace `discussion-points` in the URL with the branch name. Branch test links use the **same live Firebase database** as production.
+Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 
 
 
