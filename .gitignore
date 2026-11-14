@@ -1,0 +1,5 @@
+# Local copy of the Firebase Realtime Database rules (kept out of the public repo)
+firebase-rules.json
+
+# Local editor settings
+.vscode/

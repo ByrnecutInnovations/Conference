@@ -17,13 +17,15 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 ---
 
 ## Live Test URLS
-Test links for Branch: audience-improvements (these run the new version):
+No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html |
-| Moderator |https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/audience-improvements/index.html?display=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
+
+Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 
 
 
@@ -82,6 +84,7 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 - Open or close the session (prevents new audience submissions when closed)
 - **Auto-approve** on/off: when on, new questions go straight to the display (turning it on also approves anything pending) — useful when the moderator is also the presenter
 - **Seconds between questions**: set the audience cooldown live (0 = no limit)
+- **Discussion Points**: add bullet points, reorder (↑/↓) or delete them, and choose where they appear with two independent toggles — **Show on Audience** (phones) and **Show on Display** (big screen). Either, both or neither can be on. Points are not removed by Archive & Clear.
 - Archive and clear all questions at end of session
 - Download questions as a CSV file
 - Change the moderator password (generates a new hash/salt to paste into Firebase Console)
@@ -89,6 +92,10 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 ### Display view (`?display=true`)
 - Shows all approved questions in real time — intended for a projector or second screen
 - Each question has a round **✓** (mark answered) button so the presenter can dismiss questions directly from the display without switching to the moderator dashboard
+- When **Show on Display** is on, discussion points appear in a panel beside the questions (stacked above them on narrower screens)
+
+### Audience view — discussion points
+- When **Show on Audience** is on, discussion points appear as a collapsible list above the question form (and on the "Submission Closed" screen)
 
 ---
 
@@ -120,6 +127,14 @@ settings/
   rateLimitSeconds  — integer 0–600 (audience cooldown; default 30 if unset)
   passwordHash  — SHA-256 hash of moderator password
   passwordSalt  — random hex salt for the hash
+
+discussion/
+  showOnAudience  — boolean (show points on audience phones)
+  showOnDisplay   — boolean (show points on the big screen)
+  points/
+    <push-id>/
+      text   — bullet point text (max 200 chars)
+      order  — integer sort position (1 = top)
 
 archive/
   session_<timestamp>/
