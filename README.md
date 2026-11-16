@@ -17,13 +17,13 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 ---
 
 ## Live Test URLS
-No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
+Currently under test: branch `discussion-topic-toggles` (per-topic ON/OFF for discussion points).
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
-| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html?display=true |
 
 Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 
@@ -84,7 +84,7 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 - Open or close the session (prevents new audience submissions when closed)
 - **Auto-approve** on/off: when on, new questions go straight to the display (turning it on also approves anything pending) — useful when the moderator is also the presenter
 - **Seconds between questions**: set the audience cooldown live (0 = no limit)
-- **Discussion Points**: add bullet points, reorder (↑/↓) or delete them, and choose where they appear with two independent toggles — **Show on Audience** (phones) and **Show on Display** (big screen). Either, both or neither can be on. Points are not removed by Archive & Clear.
+- **Discussion Points**: load the whole day's topics up front (paste a list, one per line — leading bullets/numbers are stripped), reorder (↑/↓) or delete them, and switch **individual topics ON/OFF** as the day progresses (plus **Show all** / **Hide all**). New topics start OFF. Choose where the switched-on topics appear with two independent toggles — **Show on Audience** (phones) and **Show on Display** (big screen). Either, both or neither can be on. Points are not removed by Archive & Clear.
 - Archive and clear all questions at end of session
 - Download questions as a CSV file
 - Change the moderator password (generates a new hash/salt to paste into Firebase Console)
@@ -135,6 +135,7 @@ discussion/
     <push-id>/
       text   — bullet point text (max 200 chars)
       order  — integer sort position (1 = top)
+      visible — boolean (false = hidden from Audience/Display; missing = shown, for older points)
 
 archive/
   session_<timestamp>/

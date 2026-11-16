@@ -413,6 +413,10 @@
             flex-wrap: wrap;
         }
 
+        .setting-row[hidden] {
+            display: none;
+        }
+
         .setting-row input {
             width: 90px;
             padding: 8px;
@@ -506,10 +510,19 @@
             font-size: 14px;
         }
 
-        .discussion-add-row input {
+        .discussion-add-row textarea {
             flex: 1;
             min-width: 180px;
-            width: auto;
+            min-height: 70px;
+            padding: 8px;
+        }
+
+        .discussion-admin-list .point-toggle {
+            min-width: 56px;
+        }
+
+        .discussion-admin-list li.point-hidden .point-text {
+            color: #999;
         }
 
         .display-layout.with-discussion {
@@ -754,7 +767,8 @@
             data = data || {};
             const points = Object.entries(data.points || {})
                 .filter(([id, p]) => isValidQuestionId(id) && p && typeof p.text === 'string' && p.text.trim())
-                .map(([id, p]) => ({ id, text: p.text, order: Number(p.order) || 0 }))
+                // visible: missing is treated as shown (points created before per-topic toggles existed)
+                .map(([id, p]) => ({ id, text: p.text, order: Number(p.order) || 0, visible: p.visible !== false }))
                 .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
             return {
                 showOnAudience: data.showOnAudience === true,
@@ -763,15 +777,21 @@
             };
         }
 
+        // Only topics switched on by the moderator are shown on the Audience and Display views
+        function visibleDiscussionPoints() {
+            return discussion.points.filter(p => p.visible);
+        }
+
         function discussionListHtml() {
-            return `<ul>${discussion.points.map(p => `<li>${escapeHtml(p.text)}</li>`).join('')}</ul>`;
+            return `<ul>${visibleDiscussionPoints().map(p => `<li>${escapeHtml(p.text)}</li>`).join('')}</ul>`;
         }
 
         // Audience view: collapsible panel (open by default) so it doesn't push the form off a phone screen
         function updateAudienceDiscussion() {
             const host = document.getElementById('audienceDiscussion');
             if (!host) return;
-            if (!discussion.showOnAudience || discussion.points.length === 0) {
+            const count = visibleDiscussionPoints().length;
+            if (!discussion.showOnAudience || count === 0) {
                 host.innerHTML = '';
                 return;
             }
@@ -779,7 +799,7 @@
             const wasOpen = existing ? existing.open : true;
             host.innerHTML = `
                 <details class="discussion-panel"${wasOpen ? ' open' : ''}>
-                    <summary>${DISCUSSION_TITLE} (${discussion.points.length})</summary>
+                    <summary>${DISCUSSION_TITLE} (${count})</summary>
                     ${discussionListHtml()}
                 </details>
             `;
@@ -1107,12 +1127,18 @@
                                 <button onclick="window.toggleDiscussion('showOnAudience')" id="discussionAudienceBtn" class="btn-secondary">Show on Audience: OFF</button>
                                 <button onclick="window.toggleDiscussion('showOnDisplay')" id="discussionDisplayBtn" class="btn-secondary">Show on Display: OFF</button>
                             </div>
-                            <span class="setting-hint">Turn on for phones, the big screen, or both. Points are kept until you delete them (Archive &amp; Clear does not remove them).</span>
+                            <span class="setting-hint">Turn on for phones, the big screen, or both. Only topics switched ON below are shown. Topics are kept until you delete them (Archive &amp; Clear does not remove them).</span>
                             <form class="setting-row discussion-add-row" id="discussionAddForm">
-                                <input type="text" id="discussionInput" placeholder="Add a discussion point..." maxlength="${MAX_DISCUSSION_POINT_LENGTH}" required>
+                                <textarea id="discussionInput" rows="2" placeholder="Add discussion topics - one per line (paste the whole day's list)" required></textarea>
                                 <button type="submit" class="btn-secondary">Add</button>
                             </form>
+                            <span class="setting-hint">New topics start OFF. Enter adds; Shift+Enter starts a new line.</span>
                             <span class="setting-hint" id="discussionStatus"></span>
+                            <div class="setting-row" id="discussionBulkRow">
+                                <span class="setting-hint" id="discussionCount"></span>
+                                <button class="btn-secondary" onclick="window.setAllDiscussionVisible(true)">Show all</button>
+                                <button class="btn-secondary" onclick="window.setAllDiscussionVisible(false)">Hide all</button>
+                            </div>
                             <ul class="discussion-admin-list" id="discussionAdminList"></ul>
                         </div>
                         <div class="moderator-controls">
@@ -1135,6 +1161,13 @@
             document.getElementById('discussionAddForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 window.addDiscussionPoint();
+            });
+
+            document.getElementById('discussionInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                    e.preventDefault();
+                    window.addDiscussionPoint();
+                }
             });
 
             onValue(discussionRef, (snapshot) => {
@@ -1229,12 +1262,17 @@
             const audBtn = document.getElementById('discussionAudienceBtn');
             const dispBtn = document.getElementById('discussionDisplayBtn');
             const list = document.getElementById('discussionAdminList');
+            const bulkRow = document.getElementById('discussionBulkRow');
+            const count = document.getElementById('discussionCount');
             if (!audBtn || !dispBtn || !list) return;
 
             audBtn.textContent = `Show on Audience: ${discussion.showOnAudience ? 'ON' : 'OFF'}`;
             audBtn.className = discussion.showOnAudience ? 'btn-success' : 'btn-secondary';
             dispBtn.textContent = `Show on Display: ${discussion.showOnDisplay ? 'ON' : 'OFF'}`;
             dispBtn.className = discussion.showOnDisplay ? 'btn-success' : 'btn-secondary';
+
+            bulkRow.hidden = discussion.points.length === 0;
+            count.textContent = `${visibleDiscussionPoints().length} of ${discussion.points.length} topics showing`;
 
             if (discussion.points.length === 0) {
                 list.innerHTML = '<li><span class="point-text setting-hint">No discussion points yet.</span></li>';
@@ -1245,8 +1283,9 @@
             list.innerHTML = discussion.points.map((p, i) => {
                 const safeId = escapeJsString(p.id);
                 return `
-                    <li>
-                        <span class="point-text">&bull; ${escapeHtml(p.text)}</span>
+                    <li class="${p.visible ? '' : 'point-hidden'}">
+                        <button class="${p.visible ? 'btn-success' : 'btn-secondary'} point-toggle" onclick="window.toggleDiscussionPoint('${safeId}')" title="Show/hide this topic on the Audience and Display views">${p.visible ? 'ON' : 'OFF'}</button>
+                        <span class="point-text">${escapeHtml(p.text)}</span>
                         <button class="btn-secondary" onclick="window.moveDiscussionPoint('${safeId}', -1)" ${i === 0 ? 'disabled' : ''} title="Move up" aria-label="Move up">&uarr;</button>
                         <button class="btn-secondary" onclick="window.moveDiscussionPoint('${safeId}', 1)" ${i === last ? 'disabled' : ''} title="Move down" aria-label="Move down">&darr;</button>
                         <button class="btn-reject" onclick="window.deleteDiscussionPoint('${safeId}')" title="Delete" aria-label="Delete">&times;</button>
@@ -1265,15 +1304,24 @@
             updateLastActivity();
             const input = document.getElementById('discussionInput');
             const status = document.getElementById('discussionStatus');
-            const text = input.value.trim();
-            if (!text) return;
-            if (text.length > MAX_DISCUSSION_POINT_LENGTH) {
-                status.textContent = `Keep each point under ${MAX_DISCUSSION_POINT_LENGTH} characters.`;
+            // One topic per line; strip list bullets/numbering people paste in from agendas
+            const lines = input.value.split(/\r?\n/)
+                .map(l => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+                .filter(Boolean);
+            if (lines.length === 0) return;
+            const tooLong = lines.findIndex(l => l.length > MAX_DISCUSSION_POINT_LENGTH);
+            if (tooLong >= 0) {
+                status.textContent = `Line ${tooLong + 1} is too long - keep each topic under ${MAX_DISCUSSION_POINT_LENGTH} characters.`;
                 return;
             }
             const maxOrder = discussion.points.reduce((m, p) => Math.max(m, p.order), 0);
+            const updates = {};
+            lines.forEach((text, k) => {
+                const id = push(ref(database, 'discussion/points')).key;
+                updates[`discussion/points/${id}`] = { text, order: maxOrder + k + 1, visible: false };
+            });
             try {
-                await set(push(ref(database, 'discussion/points')), { text, order: maxOrder + 1 });
+                await update(ref(database), updates);
                 input.value = '';
                 status.textContent = '';
                 input.focus();
@@ -1281,6 +1329,21 @@
                 console.error('Add discussion point error:', err);
                 status.textContent = 'Could not save. Check your connection and try again.';
             }
+        };
+
+        window.toggleDiscussionPoint = async (id) => {
+            updateLastActivity();
+            if (!isValidQuestionId(id)) return;
+            const point = discussion.points.find(p => p.id === id);
+            if (!point) return;
+            await set(ref(database, `discussion/points/${id}/visible`), !point.visible);
+        };
+
+        window.setAllDiscussionVisible = async (visible) => {
+            updateLastActivity();
+            const updates = {};
+            discussion.points.forEach(p => { updates[`discussion/points/${p.id}/visible`] = visible === true; });
+            if (Object.keys(updates).length) await update(ref(database), updates);
         };
 
         window.moveDiscussionPoint = async (id, direction) => {
@@ -1631,7 +1694,7 @@
                 discussion = normalizeDiscussion(snapshot.val());
                 const layout = document.getElementById('displayLayout');
                 const panel = document.getElementById('displayDiscussion');
-                const show = discussion.showOnDisplay && discussion.points.length > 0;
+                const show = discussion.showOnDisplay && visibleDiscussionPoints().length > 0;
                 layout.classList.toggle('with-discussion', show);
                 layout.parentElement.classList.toggle('wide', show);
                 panel.hidden = !show;

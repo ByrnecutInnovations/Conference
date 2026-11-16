@@ -5,7 +5,18 @@ Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
-_Nothing yet._
+Branch `discussion-topic-toggles`.
+
+### Added
+- Per-topic **ON/OFF** button for each discussion point, so the full day's agenda can be loaded up front and topics revealed as the conference progresses. Audience and Display update live.
+- **Show all** / **Hide all** buttons and an "X of Y topics showing" count.
+- Add several topics at once: the add box is now multi-line (one topic per line; pasted bullets/numbering are stripped). Enter adds, Shift+Enter starts a new line.
+
+### Changed
+- New topics start **OFF**. Existing points with no `visible` field are treated as ON, so nothing already on screen disappears.
+- Firebase: new optional `discussion/points/<id>/visible` boolean.
+- Firebase rules: `visible` added to the points validation (rules reject unknown fields). **Must be published in the Firebase Console before testing or merging.**
+- README and Moderator Quick Guide updated.
 
 ## 2026-11-14 — Discussion points (branch `discussion-points`)
 
