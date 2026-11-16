@@ -17,13 +17,13 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 ---
 
 ## Live Test URLS
-Currently under test: branch `discussion-topic-toggles` (per-topic ON/OFF for discussion points).
+No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html |
-| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/discussion-topic-toggles/index.html?display=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
 
 Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 

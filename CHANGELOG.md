@@ -5,7 +5,9 @@ Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
-Branch `discussion-topic-toggles`.
+_Nothing yet._
+
+## 2026-11-16 — Per-topic discussion toggles (branch `discussion-topic-toggles`)
 
 ### Added
 - Per-topic **ON/OFF** button for each discussion point, so the full day's agenda can be loaded up front and topics revealed as the conference progresses. Audience and Display update live.
