@@ -18,14 +18,14 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 ---
 
 ## Live Test URLS
-Branch under test: `export-reports`
+No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html |
-| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?display=true |
-| Export / Report | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?export=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
+| Export / Report | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?export=true |
 
 Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 
