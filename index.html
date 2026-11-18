@@ -422,6 +422,12 @@
             padding: 8px;
         }
 
+        .setting-row input.title-input {
+            flex: 1;
+            min-width: 200px;
+            width: auto;
+        }
+
         .setting-row button {
             padding: 8px 16px;
             font-size: 14px;
@@ -566,6 +572,65 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .question-topic {
+            font-size: 13px;
+            color: #8a5a00;
+            background: #fdf6ea;
+            border-radius: 6px;
+            padding: 4px 8px;
+            margin-bottom: 12px;
+            display: inline-block;
+            overflow-wrap: anywhere;
+        }
+
+        /* ---- Export / Report view ---- */
+        .container.wide {
+            max-width: 1100px;
+        }
+
+        select {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+        }
+
+        .export-panel .setting-row input[type="date"] {
+            width: auto;
+        }
+
+        .export-panel .setting-row input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            width: auto;
+        }
+
+        .export-panel .setting-row > label:first-child {
+            min-width: 110px;
+        }
+
+        .export-panel .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+        }
+
+        .export-panel .check input {
+            width: auto;
+        }
+
+        .export-preview {
+            width: 100%;
+            min-height: 400px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -606,6 +671,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isModerator = urlParams.get('moderator') === 'true';
         const isDisplay = urlParams.get('display') === 'true';
+        const isExport = urlParams.get('export') === 'true';
         
         const MAX_QUESTION_LENGTH = 500;
         const DEFAULT_RATE_LIMIT_SECONDS = 30;
@@ -615,6 +681,14 @@
         const MAX_PASSWORD_LENGTH = 128;
         const MAX_DISCUSSION_POINT_LENGTH = 200;
         const DISCUSSION_TITLE = 'Discussion Points';
+        const DEFAULT_DISPLAY_TITLE = 'Q&A';
+        const MAX_DISPLAY_TITLE_LENGTH = 100;
+
+        // settings/displayTitle: big-screen heading, editable from the moderator dashboard
+        function normalizeDisplayTitle(value) {
+            return typeof value === 'string' && value.trim() ? value.trim().slice(0, MAX_DISPLAY_TITLE_LENGTH) : DEFAULT_DISPLAY_TITLE;
+        }
+        let displayTitle = DEFAULT_DISPLAY_TITLE;
 
        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='67.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='132.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         // Session timeout management
@@ -780,6 +854,19 @@
         // Only topics switched on by the moderator are shown on the Audience and Display views
         function visibleDiscussionPoints() {
             return discussion.points.filter(p => p.visible);
+        }
+
+        // Topics that are actually on screen somewhere right now (switched ON and shown on Audience and/or Display).
+        // Saved with each question at submit time so exports can show what the question related to.
+        function activeTopicTexts() {
+            if (!discussion.showOnAudience && !discussion.showOnDisplay) return [];
+            return visibleDiscussionPoints().map(p => p.text);
+        }
+
+        // questions/<id>/topics comes back from Firebase as an array (or object if keys are sparse)
+        function normalizeTopics(value) {
+            if (!value || typeof value !== 'object') return [];
+            return Object.values(value).filter(t => typeof t === 'string' && t.trim());
         }
 
         function discussionListHtml() {
@@ -983,11 +1070,13 @@
                 submitBtn.textContent = 'Submitting...';
 
                 try {
+                    const topics = activeTopicTexts();
                     await set(push(questionsRef), {
                         name,
                         question: questionText,
                         timestamp: Date.now(),
-                        status: autoApprove ? 'approved' : 'pending'
+                        status: autoApprove ? 'approved' : 'pending',
+                        ...(topics.length ? { topics } : {})
                     });
 
                     setRateLimit();
@@ -1053,7 +1142,8 @@
                     if (isValid) {
                         sessionStorage.setItem('moderatorAuth', 'true');
                         updateLastActivity();
-                        renderModeratorView();
+                        if (isExport) renderExportView();
+                        else renderModeratorView();
                     } else {
                         messageDiv.innerHTML = '<div class="error-message">Incorrect password</div>';
                         loginBtn.disabled = false;
@@ -1107,6 +1197,7 @@
                             <button onclick="window.toggleSession()" id="toggleSessionBtn" class="btn-success">Close Session</button>
                             <button onclick="window.archiveAndClear()" class="btn-danger">Archive & Clear All</button>
                             <button onclick="window.downloadQuestions()" class="btn-secondary">Download CSV</button>
+                            <button onclick="window.location.href='?export=true'" class="btn-secondary" title="Filter by date, line questions up with discussion topics, preview and download a report">Export / Report</button>
                             <button onclick="window.showChangePassword()" class="btn-secondary">Change Password</button>
                         </div>
                         <div class="settings-panel">
@@ -1119,6 +1210,12 @@
                                 <input type="number" id="rateLimitInput" min="0" max="${MAX_RATE_LIMIT_SECONDS}" step="1" required value="${rateLimitSeconds}">
                                 <button type="submit" class="btn-secondary">Save</button>
                                 <span class="setting-hint" id="rateLimitStatus">0 = no limit. Applies to everyone immediately.</span>
+                            </form>
+                            <form class="setting-row" id="displayTitleForm">
+                                <label for="displayTitleInput">Display title</label>
+                                <input type="text" id="displayTitleInput" class="title-input" maxlength="${MAX_DISPLAY_TITLE_LENGTH}" placeholder="${DEFAULT_DISPLAY_TITLE}">
+                                <button type="submit" class="btn-secondary">Save</button>
+                                <span class="setting-hint" id="displayTitleStatus" style="flex-basis: 100%;">Heading on the big screen. Leave blank for "${DEFAULT_DISPLAY_TITLE}".</span>
                             </form>
                         </div>
                         <div class="settings-panel" id="discussionPanel">
@@ -1158,6 +1255,11 @@
                 window.saveRateLimit();
             });
 
+            document.getElementById('displayTitleForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                window.saveDisplayTitle();
+            });
+
             document.getElementById('discussionAddForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 window.addDiscussionPoint();
@@ -1180,6 +1282,7 @@
                 sessionOpen = settings.sessionOpen !== false;
                 autoApprove = settings.autoApprove === true;
                 rateLimitSeconds = normalizeRateLimit(settings.rateLimitSeconds);
+                displayTitle = normalizeDisplayTitle(settings.displayTitle);
                 updateSessionUI();
                 updateSettingsUI();
             });
@@ -1222,7 +1325,28 @@
             if (rateInput && document.activeElement !== rateInput) {
                 rateInput.value = rateLimitSeconds;
             }
+            const titleInput = document.getElementById('displayTitleInput');
+            if (titleInput && document.activeElement !== titleInput) {
+                titleInput.value = displayTitle === DEFAULT_DISPLAY_TITLE ? '' : displayTitle;
+            }
         }
+
+        window.saveDisplayTitle = async () => {
+            updateLastActivity();
+            const input = document.getElementById('displayTitleInput');
+            const status = document.getElementById('displayTitleStatus');
+            const value = input.value.trim().slice(0, MAX_DISPLAY_TITLE_LENGTH);
+            try {
+                // Blank removes the setting so the display falls back to the default
+                await set(ref(database, 'settings/displayTitle'), value || null);
+                status.textContent = `✓ Saved: the display now shows "${value || DEFAULT_DISPLAY_TITLE}".`;
+            } catch (err) {
+                console.error('Save display title error:', err);
+                status.textContent = err && err.code === 'PERMISSION_DENIED'
+                    ? 'Not allowed to save - the Firebase rules need a settings/displayTitle entry (see CLAUDE.md).'
+                    : 'Could not save. Check your connection and try again.';
+            }
+        };
 
         window.toggleAutoApprove = async () => {
             updateLastActivity();
@@ -1643,6 +1767,10 @@
                     return '';
                 }
                 const safeId = escapeJsString(q.id);
+                const topics = normalizeTopics(q.topics);
+                const topicsHtml = topics.length
+                    ? `<div class="question-topic">Topic: ${topics.map(escapeHtml).join(' · ')}</div>`
+                    : '';
 
                 const actions = (status === 'pending') ? `
                     <button class="btn-approve" onclick="window.approveQuestion('${safeId}')">Approve</button>
@@ -1662,6 +1790,7 @@
                         </div>
                         <div class="question-text">${safeQuestion}</div>
                         <div class="question-name">— ${safeName}</div>
+                        ${topicsHtml}
                         <div class="question-actions">${actions}</div>
                     </div>
                 `;
@@ -1677,7 +1806,7 @@
                     <div class="display-container">
                         <div class="display-header">
                             <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
-                            <div class="display-title">Byrnecut Engineering Professional Development Day</div>
+                            <div class="display-title" id="displayTitle">${escapeHtml(displayTitle)}</div>
                         </div>
                         <div class="display-layout" id="displayLayout">
                             <aside class="display-discussion" id="displayDiscussion" hidden></aside>
@@ -1689,6 +1818,11 @@
 
             const host = document.getElementById('displayQuestions');
             host.innerHTML = '<div class="loading">Loading questions...</div>';
+
+            onValue(ref(database, 'settings/displayTitle'), (snapshot) => {
+                displayTitle = normalizeDisplayTitle(snapshot.val());
+                document.getElementById('displayTitle').textContent = displayTitle;
+            });
 
             onValue(discussionRef, (snapshot) => {
                 discussion = normalizeDiscussion(snapshot.val());
@@ -1713,7 +1847,7 @@
                         <div class="display-question">
                             <div class="display-question-body">
                                 <div class="display-question-text">No submissions.</div>
-                                <div class="display-question-name">Waiting on responces</div>
+                                <div class="display-question-name">Waiting on responses</div>
                             </div>
                         </div>
                     `;
@@ -1734,6 +1868,471 @@
                     `;
                 }).join('');
             });
+        }
+
+        // ---- Export / Report view (?export=true, moderator password) ----
+        // Reads current questions + archive live, filters by source/date/status, groups by the discussion
+        // topics saved on each question at submit time, previews the report and downloads HTML / JSON / CSV.
+        const exportState = { current: null, archive: null, datesInitialised: false, titleEdited: false, questions: [], options: null };
+        const STATUS_LABELS = { answered: 'Answered', approved: 'Approved, not answered', pending: 'Pending (never shown)' };
+        const NO_TOPIC_LABEL = 'No discussion topic recorded';
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function toDateInputValue(ts) {
+            const d = new Date(ts);
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        }
+
+        // 'YYYY-MM-DD' -> local midnight (new Date('YYYY-MM-DD') would be UTC midnight)
+        function parseDateInput(value) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+            return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : null;
+        }
+
+        function fmtDate(ts) {
+            return new Date(ts).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function fmtTime(ts) {
+            return new Date(ts).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function readExportOptions() {
+            const el = (id) => document.getElementById(id);
+            return {
+                source: el('exportSource').value,
+                from: el('exportFrom').value,
+                to: el('exportTo').value,
+                statuses: ['answered', 'approved', 'pending'].filter(s => el(`exportStatus_${s}`).checked),
+                groupBy: el('exportGroupBy').value,
+                includeNames: el('exportNames').checked,
+                title: el('exportTitle').value.trim() || 'Conference Q&A'
+            };
+        }
+
+        function collectExportQuestions(source) {
+            const out = [];
+            const seen = new Set();
+            const add = (id, q, sourceLabel) => {
+                if (!isValidQuestionId(id) || !q || typeof q !== 'object' || seen.has(id)) return;
+                const timestamp = Number(q.timestamp);
+                if (!Number.isFinite(timestamp)) return;
+                seen.add(id);
+                out.push({
+                    id,
+                    timestamp,
+                    name: typeof q.name === 'string' && q.name.trim() ? q.name : 'Anonymous',
+                    question: typeof q.question === 'string' ? q.question : '',
+                    status: isValidStatus(q.status) ? q.status : 'pending',
+                    topics: normalizeTopics(q.topics),
+                    source: sourceLabel
+                });
+            };
+            if (source !== 'archive') {
+                Object.entries(exportState.current || {}).forEach(([id, q]) => add(id, q, 'Current session'));
+            }
+            if (source !== 'current') {
+                Object.values(exportState.archive || {}).forEach((session) => {
+                    if (!session || typeof session !== 'object') return;
+                    const ts = Number(session.timestamp);
+                    const label = Number.isFinite(ts) ? `Archived ${fmtDate(ts)} ${fmtTime(ts)}` : 'Archived';
+                    Object.entries(session.questions || {}).forEach(([id, q]) => add(id, q, label));
+                });
+            }
+            return out.sort((a, b) => a.timestamp - b.timestamp);
+        }
+
+        function filterExportQuestions(all, opts) {
+            const fromTs = parseDateInput(opts.from);
+            const toStart = parseDateInput(opts.to);
+            let toTs = null;
+            if (toStart !== null) {
+                const d = new Date(toStart);
+                d.setDate(d.getDate() + 1); // inclusive of the whole "to" day
+                toTs = d.getTime();
+            }
+            return all.filter(q =>
+                opts.statuses.includes(q.status) &&
+                (fromTs === null || q.timestamp >= fromTs) &&
+                (toTs === null || q.timestamp < toTs)
+            );
+        }
+
+        // One group per distinct set of active topics, in the order they first came up; "no topic" last
+        function groupQuestionsByTopic(questions) {
+            const groups = new Map();
+            questions.forEach(q => {
+                const key = q.topics.join('\n');
+                if (!groups.has(key)) groups.set(key, { topics: q.topics, questions: [] });
+                groups.get(key).questions.push(q);
+            });
+            const list = [...groups.values()];
+            return list.filter(g => g.topics.length).concat(list.filter(g => !g.topics.length));
+        }
+
+        function topicLabel(topics) {
+            return topics.length ? topics.join(' · ') : NO_TOPIC_LABEL;
+        }
+
+        function exportRangeText(opts, questions) {
+            const from = parseDateInput(opts.from);
+            const to = parseDateInput(opts.to);
+            if (from !== null && to !== null) return from === to ? fmtDate(from) : `${fmtDate(from)} – ${fmtDate(to)}`;
+            if (from !== null) return `From ${fmtDate(from)}`;
+            if (to !== null) return `Up to ${fmtDate(to)}`;
+            if (!questions.length) return 'All dates';
+            const first = questions[0].timestamp;
+            const last = questions[questions.length - 1].timestamp;
+            return toDateInputValue(first) === toDateInputValue(last) ? fmtDate(first) : `${fmtDate(first)} – ${fmtDate(last)}`;
+        }
+
+        function buildReportHtml(opts, questions) {
+            const multiDay = new Set(questions.map(q => toDateInputValue(q.timestamp))).size > 1;
+            const when = (q) => multiDay ? `${fmtDate(q.timestamp)}<br>${fmtTime(q.timestamp)}` : fmtTime(q.timestamp);
+            const count = (s) => questions.filter(q => q.status === s).length;
+            const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+            const row = (q, showTopic) => `
+                <tr>
+                    <td class="t">${when(q)}</td>
+                    <td>
+                        <div class="q">${escapeHtml(q.question)}</div>
+                        ${opts.includeNames ? `<div class="n">— ${escapeHtml(q.name)}</div>` : ''}
+                        ${showTopic && q.topics.length ? `<div class="tp">${escapeHtml(topicLabel(q.topics))}</div>` : ''}
+                    </td>
+                    <td class="st"><span class="s s-${q.status}">${q.status}</span></td>
+                </tr>`;
+
+            let body;
+            if (!questions.length) {
+                body = '<p class="empty">No questions match these filters.</p>';
+            } else if (opts.groupBy === 'topic') {
+                const groups = groupQuestionsByTopic(questions);
+                const overview = `
+                    <table class="overview">
+                        <thead><tr><th>Discussion topic</th><th>Questions</th><th>Answered</th></tr></thead>
+                        <tbody>${groups.map(g => `
+                            <tr>
+                                <td>${escapeHtml(topicLabel(g.topics))}</td>
+                                <td>${g.questions.length}</td>
+                                <td>${g.questions.filter(q => q.status === 'answered').length}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>`;
+                body = overview + groups.map(g => `
+                    <section>
+                        <h2 class="${g.topics.length ? '' : 'none'}">${escapeHtml(topicLabel(g.topics))}</h2>
+                        <p class="c">${plural(g.questions.length, 'question')}${g.topics.length ? '' : ' - no topic was switched on when these were asked (or they pre-date topic tracking)'}</p>
+                        <table>${g.questions.map(q => row(q, false)).join('')}</table>
+                    </section>`).join('');
+            } else {
+                body = `
+                    <section>
+                        <h2>All questions (in order asked)</h2>
+                        <table>${questions.map(q => row(q, true)).join('')}</table>
+                    </section>`;
+            }
+
+            const statusNote = opts.statuses.length === 3 ? '' : ` · Showing: ${opts.statuses.map(s => STATUS_LABELS[s]).join(', ')}`;
+
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(opts.title)} - ${escapeHtml(exportRangeText(opts, questions))}</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #2D2D2D; margin: 0; background: #fff; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    header { display: flex; align-items: center; gap: 18px; border-bottom: 4px solid #F5A623; padding-bottom: 16px; margin-bottom: 20px; }
+    header img { width: 64px; height: 64px; flex: none; }
+    h1 { margin: 0; font-size: 26px; }
+    .sub { color: #666; margin-top: 4px; font-size: 14px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 24px; }
+    .stat { flex: 1; min-width: 120px; background: #f8f9fa; border-radius: 8px; padding: 12px 14px; border-left: 4px solid #F5A623; }
+    .stat b { display: block; font-size: 26px; }
+    .stat span { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: .04em; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { padding: 10px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; font-size: 14px; text-align: left; }
+    .overview { margin-bottom: 28px; }
+    .overview th { font-size: 12px; text-transform: uppercase; color: #666; border-bottom: 2px solid #2D2D2D; }
+    .overview td:not(:first-child), .overview th:not(:first-child) { text-align: right; width: 1%; white-space: nowrap; }
+    section { margin-bottom: 28px; }
+    h2 { font-size: 18px; background: #2D2D2D; color: #fff; padding: 10px 14px; border-radius: 6px; margin: 0 0 4px; }
+    h2.none { background: #6c757d; }
+    .c { font-size: 12px; color: #666; margin: 0 0 6px; }
+    td.t { white-space: nowrap; color: #666; width: 1%; }
+    td.st { width: 1%; text-align: right; }
+    .q { white-space: pre-wrap; line-height: 1.45; overflow-wrap: anywhere; }
+    .n { color: #666; font-style: italic; font-size: 13px; margin-top: 4px; }
+    .tp { display: inline-block; margin-top: 6px; font-size: 12px; color: #8a5a00; background: #fdf6ea; border-radius: 4px; padding: 2px 6px; }
+    .s { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; white-space: nowrap; }
+    .s-pending { background: #fff3cd; color: #856404; }
+    .s-approved { background: #d4edda; color: #155724; }
+    .s-answered { background: #e2e3e5; color: #383d41; }
+    .empty { color: #666; text-align: center; padding: 40px 0; }
+    footer { color: #999; font-size: 12px; margin-top: 32px; border-top: 1px solid #e0e0e0; padding-top: 10px; }
+    @media (max-width: 600px) { .wrap { padding: 20px 14px; } td.t { white-space: normal; } }
+    @media print {
+        .wrap { padding: 0; max-width: none; }
+        tr, .stat { break-inside: avoid; }
+        h2 { break-after: avoid; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <img src="${logoSVG}" alt="Byrnecut">
+        <div>
+            <h1>${escapeHtml(opts.title)}</h1>
+            <div class="sub">${escapeHtml(exportRangeText(opts, questions))}${escapeHtml(statusNote)}</div>
+        </div>
+    </header>
+    <div class="stats">
+        <div class="stat"><b>${questions.length}</b><span>Questions</span></div>
+        <div class="stat"><b>${count('answered')}</b><span>Answered</span></div>
+        <div class="stat"><b>${count('approved')}</b><span>Approved, not answered</span></div>
+        <div class="stat"><b>${count('pending')}</b><span>Pending</span></div>
+    </div>
+    ${body}
+    <footer>Generated ${escapeHtml(fmtDate(Date.now()))} ${escapeHtml(fmtTime(Date.now()))} from the Byrnecut Q&amp;A app.</footer>
+</div>
+</body>
+</html>`;
+        }
+
+        function refreshExport() {
+            if (exportState.current === null || exportState.archive === null) return;
+            const preview = document.getElementById('exportPreview');
+            if (!preview) return;
+
+            // First load: default to the most recent day with questions (conferences are usually one day)
+            if (!exportState.datesInitialised) {
+                exportState.datesInitialised = true;
+                setExportLatestDay();
+            }
+
+            const opts = readExportOptions();
+            const all = collectExportQuestions(opts.source);
+            const questions = filterExportQuestions(all, opts);
+            exportState.questions = questions;
+            exportState.options = opts;
+
+            const tagged = questions.filter(q => q.topics.length).length;
+            document.getElementById('exportSummary').textContent =
+                `${questions.length} of ${all.length} questions match` +
+                (questions.length ? ` · ${tagged} linked to a discussion topic` : '');
+            document.querySelectorAll('.export-download').forEach(b => { b.disabled = questions.length === 0; });
+
+            preview.srcdoc = buildReportHtml(opts, questions);
+        }
+
+        function setExportLatestDay() {
+            const all = collectExportQuestions(document.getElementById('exportSource').value);
+            const value = all.length ? toDateInputValue(all[all.length - 1].timestamp) : '';
+            document.getElementById('exportFrom').value = value;
+            document.getElementById('exportTo').value = value;
+        }
+
+        function exportFileBase() {
+            const opts = exportState.options;
+            const slug = opts.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'qa-report';
+            let range = 'all-dates';
+            if (opts.from && opts.from === opts.to) range = opts.from;
+            else if (opts.from || opts.to) range = `${opts.from || 'start'}_to_${opts.to || 'latest'}`;
+            return `${slug}_${range}`;
+        }
+
+        function downloadFile(content, filename, type) {
+            const url = URL.createObjectURL(new Blob([content], { type }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        window.exportDownload = (format) => {
+            updateLastActivity();
+            const opts = exportState.options;
+            const questions = exportState.questions;
+            if (!opts || !questions.length) return;
+            const base = exportFileBase();
+
+            if (format === 'html') {
+                downloadFile(buildReportHtml(opts, questions), `${base}.html`, 'text/html');
+            } else if (format === 'json') {
+                const data = {
+                    title: opts.title,
+                    generated: new Date().toISOString(),
+                    filters: { source: opts.source, from: opts.from || null, to: opts.to || null, statuses: opts.statuses },
+                    summary: {
+                        total: questions.length,
+                        answered: questions.filter(q => q.status === 'answered').length,
+                        approved: questions.filter(q => q.status === 'approved').length,
+                        pending: questions.filter(q => q.status === 'pending').length
+                    },
+                    topics: groupQuestionsByTopic(questions).map(g => ({ topics: g.topics, count: g.questions.length })),
+                    questions: questions.map(q => ({
+                        id: q.id,
+                        timestamp: q.timestamp,
+                        date: new Date(q.timestamp).toISOString(),
+                        ...(opts.includeNames ? { name: q.name } : {}),
+                        question: q.question,
+                        status: q.status,
+                        topics: q.topics,
+                        source: q.source
+                    }))
+                };
+                downloadFile(JSON.stringify(data, null, 2), `${base}.json`, 'application/json');
+            } else if (format === 'csv') {
+                // Quote every cell; prefix formula-like text so Excel doesn't execute it
+                const cell = (v) => {
+                    let s = String(v ?? '');
+                    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+                    return `"${s.replace(/"/g, '""')}"`;
+                };
+                const header = ['Date', 'Time', 'Discussion topic(s)', ...(opts.includeNames ? ['Name'] : []), 'Question', 'Status', 'Source'];
+                const rows = questions.map(q => [
+                    toDateInputValue(q.timestamp),
+                    fmtTime(q.timestamp),
+                    q.topics.join(' | '),
+                    ...(opts.includeNames ? [q.name] : []),
+                    q.question,
+                    q.status,
+                    q.source
+                ]);
+                // BOM so Excel opens it as UTF-8
+                const csv = '﻿' + [header, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
+                downloadFile(csv, `${base}.csv`, 'text/csv');
+            }
+        };
+
+        window.exportPrint = () => {
+            updateLastActivity();
+            const frame = document.getElementById('exportPreview');
+            if (!frame || !frame.contentWindow) return;
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+        };
+
+        function renderExportView() {
+            if (checkSessionTimeout()) {
+                showModal('Session Expired', 'Your session has expired due to inactivity. Please log in again.', () => {
+                    renderModeratorLogin();
+                });
+                return;
+            }
+            if (sessionStorage.getItem('moderatorAuth') !== 'true') {
+                renderModeratorLogin();
+                return;
+            }
+            updateLastActivity();
+
+            appDiv.innerHTML = `
+                <div class="container wide">
+                    <div class="header">
+                        <img src="${logoSVG}" alt="Byrnecut Logo" class="logo">
+                        <h1>Export &amp; Report</h1>
+                        <p>Pick the questions, preview the report, then download or print it</p>
+                    </div>
+                    <div class="content">
+                        <div class="moderator-header">
+                            <button onclick="window.location.href='?moderator=true'" class="btn-secondary">&larr; Back to Dashboard</button>
+                            <button onclick="window.logout()" class="btn-secondary">Logout</button>
+                        </div>
+                        <div class="settings-panel export-panel">
+                            <div class="setting-row">
+                                <label for="exportSource">Questions from</label>
+                                <select id="exportSource">
+                                    <option value="both">Current + archived sessions</option>
+                                    <option value="current">Current session only</option>
+                                    <option value="archive">Archived sessions only</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <label for="exportFrom">Dates</label>
+                                <input type="date" id="exportFrom" aria-label="From date">
+                                <span>to</span>
+                                <input type="date" id="exportTo" aria-label="To date">
+                                <button type="button" class="btn-secondary" id="exportLatestDay">Latest day</button>
+                                <button type="button" class="btn-secondary" id="exportAllDates">All dates</button>
+                            </div>
+                            <div class="setting-row">
+                                <label>Include</label>
+                                <label class="check"><input type="checkbox" id="exportStatus_answered" checked> Answered</label>
+                                <label class="check"><input type="checkbox" id="exportStatus_approved" checked> Approved (not answered)</label>
+                                <label class="check"><input type="checkbox" id="exportStatus_pending" checked> Pending</label>
+                            </div>
+                            <div class="setting-row">
+                                <label for="exportGroupBy">Layout</label>
+                                <select id="exportGroupBy">
+                                    <option value="topic">Group by discussion topic</option>
+                                    <option value="time">In order asked</option>
+                                </select>
+                                <label class="check"><input type="checkbox" id="exportNames" checked> Include names</label>
+                            </div>
+                            <div class="setting-row">
+                                <label for="exportTitle">Report title</label>
+                                <input type="text" id="exportTitle" value="Conference Q&amp;A" maxlength="120">
+                            </div>
+                            <span class="setting-hint">Dates are your local time. Topics come from the discussion topics switched ON (and shown on Audience or Display) when each question was submitted.</span>
+                            <span class="setting-hint" id="exportSummary">Loading questions...</span>
+                        </div>
+                        <div class="control-group">
+                            <button class="btn-success export-download" onclick="window.exportDownload('html')" disabled>Download Report (HTML)</button>
+                            <button class="btn-secondary export-download" onclick="window.exportPrint()" disabled>Print / Save as PDF</button>
+                            <button class="btn-secondary export-download" onclick="window.exportDownload('csv')" disabled>Download CSV</button>
+                            <button class="btn-secondary export-download" onclick="window.exportDownload('json')" disabled>Download JSON</button>
+                        </div>
+                        <iframe id="exportPreview" class="export-preview" title="Report preview"></iframe>
+                    </div>
+                </div>
+            `;
+
+            const preview = document.getElementById('exportPreview');
+            preview.addEventListener('load', () => {
+                try {
+                    preview.style.height = `${preview.contentDocument.documentElement.scrollHeight + 20}px`;
+                } catch (err) {
+                    console.error('Preview resize error:', err);
+                }
+            });
+
+            const onChange = () => { updateLastActivity(); refreshExport(); };
+            ['exportSource', 'exportFrom', 'exportTo', 'exportGroupBy', 'exportNames',
+             'exportStatus_answered', 'exportStatus_approved', 'exportStatus_pending']
+                .forEach(id => document.getElementById(id).addEventListener('change', onChange));
+            const titleInput = document.getElementById('exportTitle');
+            titleInput.addEventListener('input', () => { exportState.titleEdited = true; onChange(); });
+            // Default the report title to the big-screen title until the moderator types their own
+            onValue(ref(database, 'settings/displayTitle'), (snapshot) => {
+                if (exportState.titleEdited) return;
+                const t = normalizeDisplayTitle(snapshot.val());
+                titleInput.value = t === DEFAULT_DISPLAY_TITLE ? 'Conference Q&A' : t;
+                refreshExport();
+            });
+            document.getElementById('exportLatestDay').addEventListener('click', () => { setExportLatestDay(); onChange(); });
+            document.getElementById('exportAllDates').addEventListener('click', () => {
+                document.getElementById('exportFrom').value = '';
+                document.getElementById('exportTo').value = '';
+                onChange();
+            });
+
+            onValue(questionsRef, (snapshot) => {
+                exportState.current = snapshot.val() || {};
+                refreshExport();
+            }, (error) => renderFatalError('Could not load questions', error));
+            onValue(archiveRef, (snapshot) => {
+                exportState.archive = snapshot.val() || {};
+                refreshExport();
+            }, (error) => renderFatalError('Could not load the archive', error));
         }
 
         function renderFatalError(message, err) {
@@ -1759,6 +2358,7 @@
         async function bootstrap() {
             if (!appDiv) return;
             if (isDisplay) return renderDisplayView();
+            if (isExport) return renderExportView();
             if (isModerator) return renderModeratorView();
             return renderAudienceView();
         }
