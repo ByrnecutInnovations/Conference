@@ -3,9 +3,16 @@
 All notable changes to the Byrnecut Conference Q&A app are recorded here.
 Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [Unreleased] (branch `export-reports`)
 
-_Nothing yet._
+### Added
+- **Export / Report** view (`?export=true`, moderator password), opened from a new dashboard button. Filter by source (current / archived / both), date range (defaults to the latest day with questions) and status. Group by discussion topic or list in the order asked. Live preview, then download a self-contained branded **HTML report**, **Print / Save as PDF**, **CSV** (UTF-8, topic column, formula-safe) or **JSON**.
+- Questions now record the discussion topics that were ON (and shown on Audience or Display) at submit time, in `questions/<id>/topics`. Topic text is stored, so later edits/deletes of topics don't affect old questions. Shown as a "Topic:" tag on moderator cards.
+
+### Notes
+- No Firebase rules change needed (`questions/` has no field validation; `archive/` is readable).
+- Questions submitted before this change have no topic history and report as "No discussion topic recorded".
+- `Export_data/` (raw Firebase exports with attendee data) added to `.gitignore`.
 
 ## 2026-11-16 — Per-topic discussion toggles (branch `discussion-topic-toggles`)
 

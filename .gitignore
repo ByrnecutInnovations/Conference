@@ -1,5 +1,8 @@
 # Local copy of the Firebase Realtime Database rules (kept out of the public repo)
 firebase-rules.json
 
+# Raw Firebase exports contain attendee names/questions - never publish
+Export_data/
+
 # Local editor settings
 .vscode/

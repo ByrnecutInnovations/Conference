@@ -13,17 +13,19 @@ Built as a single `index.html` file backed by Firebase Realtime Database — no 
 | Audience | https://byrnecutinnovations.github.io/Conference/ |
 | Moderator | https://byrnecutinnovations.github.io/Conference/?moderator=true |
 | Display | https://byrnecutinnovations.github.io/Conference/?display=true |
+| Export / Report | https://byrnecutinnovations.github.io/Conference/?export=true |
 
 ---
 
 ## Live Test URLS
-No feature branch is currently under test. To test a branch before merging, use these links with `<branch>` replaced by the branch name:
+Branch under test: `export-reports`
 
 | View | URL |
 |------|-----|
-| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html |
-| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?moderator=true |
-| Display | https://raw.githack.com/ByrnecutInnovations/Conference/&lt;branch&gt;/index.html?display=true |
+| Audience | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html |
+| Moderator | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?moderator=true |
+| Display | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?display=true |
+| Export / Report | https://raw.githack.com/ByrnecutInnovations/Conference/export-reports/index.html?export=true |
 
 Branch test links use the **same live Firebase database** as production. If a branch adds a new database node, the Firebase rules must be updated before it will save (see `CLAUDE.md`).
 
@@ -87,7 +89,16 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 - **Discussion Points**: load the whole day's topics up front (paste a list, one per line — leading bullets/numbers are stripped), reorder (↑/↓) or delete them, and switch **individual topics ON/OFF** as the day progresses (plus **Show all** / **Hide all**). New topics start OFF. Choose where the switched-on topics appear with two independent toggles — **Show on Audience** (phones) and **Show on Display** (big screen). Either, both or neither can be on. Points are not removed by Archive & Clear.
 - Archive and clear all questions at end of session
 - Download questions as a CSV file
+- **Export / Report** button opens the export view (below)
+- Each question card shows the discussion topic(s) that were on when it was submitted
 - Change the moderator password (generates a new hash/salt to paste into Firebase Console)
+
+### Export / Report view (`?export=true`)
+- Same moderator password; reached from the dashboard's **Export / Report** button
+- Choose **Current**, **Archived** or **both**, a **date range** (defaults to the most recent day with questions; **Latest day** / **All dates** shortcuts) and which statuses to include
+- Layout: **group by discussion topic** (with a topic overview table) or **in order asked**; optional names; editable report title
+- Live preview of the report, then **Download Report (HTML)** (self-contained, branded, printable), **Print / Save as PDF**, **Download CSV** (Excel-friendly, includes topic column) or **Download JSON**
+- Topics come from `questions/<id>/topics`, saved at submit time. Questions from before this feature (or asked while no topic was on) appear under "No discussion topic recorded"
 
 ### Display view (`?display=true`)
 - Shows all approved questions in real time — intended for a projector or second screen
@@ -120,6 +131,8 @@ questions/
     question    — question text
     timestamp   — Unix ms
     status      — "pending" | "approved" | "answered"
+    topics      — optional array of discussion point texts that were ON (and shown on Audience or
+                  Display) when the question was submitted; omitted if none
 
 settings/
   sessionOpen       — boolean (true = accepting questions)
