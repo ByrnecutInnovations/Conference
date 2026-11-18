@@ -9,8 +9,13 @@ Newest first. Dates are YYYY-MM-DD. Format loosely follows [Keep a Changelog](ht
 - **Export / Report** view (`?export=true`, moderator password), opened from a new dashboard button. Filter by source (current / archived / both), date range (defaults to the latest day with questions) and status. Group by discussion topic or list in the order asked. Live preview, then download a self-contained branded **HTML report**, **Print / Save as PDF**, **CSV** (UTF-8, topic column, formula-safe) or **JSON**.
 - Questions now record the discussion topics that were ON (and shown on Audience or Display) at submit time, in `questions/<id>/topics`. Topic text is stored, so later edits/deletes of topics don't affect old questions. Shown as a "Topic:" tag on moderator cards.
 
+- **Display title** setting on the Moderator dashboard (`settings/displayTitle`): changes the big-screen heading live; blank falls back to "Q&A". Export reports default to it as their title.
+
+### Changed
+- Display empty state now reads "No submissions." / "Waiting on responses" (from a direct edit on GitHub `main`, merged in; typo fixed). The hard-coded event title from that edit is replaced by the Display title setting.
+
 ### Notes
-- No Firebase rules change needed (`questions/` has no field validation; `archive/` is readable).
+- **Firebase rules:** add `settings/displayTitle` (`.write: true`, string ≤ 100 chars) and publish in the Console **before merging**, or saving the title fails with `PERMISSION_DENIED`. Topics on questions and the Export view need no rules change (`questions/` has no field validation; `archive/` is readable).
 - Questions submitted before this change have no topic history and report as "No discussion topic recorded".
 - `Export_data/` (raw Firebase exports with attendee data) added to `.gitignore`.
 

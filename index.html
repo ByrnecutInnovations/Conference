@@ -422,6 +422,12 @@
             padding: 8px;
         }
 
+        .setting-row input.title-input {
+            flex: 1;
+            min-width: 200px;
+            width: auto;
+        }
+
         .setting-row button {
             padding: 8px 16px;
             font-size: 14px;
@@ -675,6 +681,14 @@
         const MAX_PASSWORD_LENGTH = 128;
         const MAX_DISCUSSION_POINT_LENGTH = 200;
         const DISCUSSION_TITLE = 'Discussion Points';
+        const DEFAULT_DISPLAY_TITLE = 'Q&A';
+        const MAX_DISPLAY_TITLE_LENGTH = 100;
+
+        // settings/displayTitle: big-screen heading, editable from the moderator dashboard
+        function normalizeDisplayTitle(value) {
+            return typeof value === 'string' && value.trim() ? value.trim().slice(0, MAX_DISPLAY_TITLE_LENGTH) : DEFAULT_DISPLAY_TITLE;
+        }
+        let displayTitle = DEFAULT_DISPLAY_TITLE;
 
        const logoSVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='20' fill='%23F5A623'/%3E%3Ccircle cx='35' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='35' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='67.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='70' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='130' cy='100' r='12' fill='white' stroke='%232D2D2D' stroke-width='2'/%3E%3Ccircle cx='165' cy='100' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='100' cy='132.5' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='35' cy='165' r='12' fill='%232D2D2D'/%3E%3Ccircle cx='165' cy='165' r='12' fill='%232D2D2D'/%3E%3C/svg%3E`;
         // Session timeout management
@@ -1197,6 +1211,12 @@
                                 <button type="submit" class="btn-secondary">Save</button>
                                 <span class="setting-hint" id="rateLimitStatus">0 = no limit. Applies to everyone immediately.</span>
                             </form>
+                            <form class="setting-row" id="displayTitleForm">
+                                <label for="displayTitleInput">Display title</label>
+                                <input type="text" id="displayTitleInput" class="title-input" maxlength="${MAX_DISPLAY_TITLE_LENGTH}" placeholder="${DEFAULT_DISPLAY_TITLE}">
+                                <button type="submit" class="btn-secondary">Save</button>
+                                <span class="setting-hint" id="displayTitleStatus" style="flex-basis: 100%;">Heading on the big screen. Leave blank for "${DEFAULT_DISPLAY_TITLE}".</span>
+                            </form>
                         </div>
                         <div class="settings-panel" id="discussionPanel">
                             <label>${DISCUSSION_TITLE}</label>
@@ -1235,6 +1255,11 @@
                 window.saveRateLimit();
             });
 
+            document.getElementById('displayTitleForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                window.saveDisplayTitle();
+            });
+
             document.getElementById('discussionAddForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 window.addDiscussionPoint();
@@ -1257,6 +1282,7 @@
                 sessionOpen = settings.sessionOpen !== false;
                 autoApprove = settings.autoApprove === true;
                 rateLimitSeconds = normalizeRateLimit(settings.rateLimitSeconds);
+                displayTitle = normalizeDisplayTitle(settings.displayTitle);
                 updateSessionUI();
                 updateSettingsUI();
             });
@@ -1299,7 +1325,28 @@
             if (rateInput && document.activeElement !== rateInput) {
                 rateInput.value = rateLimitSeconds;
             }
+            const titleInput = document.getElementById('displayTitleInput');
+            if (titleInput && document.activeElement !== titleInput) {
+                titleInput.value = displayTitle === DEFAULT_DISPLAY_TITLE ? '' : displayTitle;
+            }
         }
+
+        window.saveDisplayTitle = async () => {
+            updateLastActivity();
+            const input = document.getElementById('displayTitleInput');
+            const status = document.getElementById('displayTitleStatus');
+            const value = input.value.trim().slice(0, MAX_DISPLAY_TITLE_LENGTH);
+            try {
+                // Blank removes the setting so the display falls back to the default
+                await set(ref(database, 'settings/displayTitle'), value || null);
+                status.textContent = `✓ Saved: the display now shows "${value || DEFAULT_DISPLAY_TITLE}".`;
+            } catch (err) {
+                console.error('Save display title error:', err);
+                status.textContent = err && err.code === 'PERMISSION_DENIED'
+                    ? 'Not allowed to save - the Firebase rules need a settings/displayTitle entry (see CLAUDE.md).'
+                    : 'Could not save. Check your connection and try again.';
+            }
+        };
 
         window.toggleAutoApprove = async () => {
             updateLastActivity();
@@ -1759,7 +1806,7 @@
                     <div class="display-container">
                         <div class="display-header">
                             <img src="${logoSVG}" alt="Byrnecut Logo" class="display-logo">
-                            <div class="display-title">Byrnecut Engineering Professional Development Day</div>
+                            <div class="display-title" id="displayTitle">${escapeHtml(displayTitle)}</div>
                         </div>
                         <div class="display-layout" id="displayLayout">
                             <aside class="display-discussion" id="displayDiscussion" hidden></aside>
@@ -1771,6 +1818,11 @@
 
             const host = document.getElementById('displayQuestions');
             host.innerHTML = '<div class="loading">Loading questions...</div>';
+
+            onValue(ref(database, 'settings/displayTitle'), (snapshot) => {
+                displayTitle = normalizeDisplayTitle(snapshot.val());
+                document.getElementById('displayTitle').textContent = displayTitle;
+            });
 
             onValue(discussionRef, (snapshot) => {
                 discussion = normalizeDiscussion(snapshot.val());
@@ -1795,7 +1847,7 @@
                         <div class="display-question">
                             <div class="display-question-body">
                                 <div class="display-question-text">No submissions.</div>
-                                <div class="display-question-name">Waiting on responces</div>
+                                <div class="display-question-name">Waiting on responses</div>
                             </div>
                         </div>
                     `;
@@ -1821,7 +1873,7 @@
         // ---- Export / Report view (?export=true, moderator password) ----
         // Reads current questions + archive live, filters by source/date/status, groups by the discussion
         // topics saved on each question at submit time, previews the report and downloads HTML / JSON / CSV.
-        const exportState = { current: null, archive: null, datesInitialised: false, questions: [], options: null };
+        const exportState = { current: null, archive: null, datesInitialised: false, titleEdited: false, questions: [], options: null };
         const STATUS_LABELS = { answered: 'Answered', approved: 'Approved, not answered', pending: 'Pending (never shown)' };
         const NO_TOPIC_LABEL = 'No discussion topic recorded';
 
@@ -2257,7 +2309,15 @@
             ['exportSource', 'exportFrom', 'exportTo', 'exportGroupBy', 'exportNames',
              'exportStatus_answered', 'exportStatus_approved', 'exportStatus_pending']
                 .forEach(id => document.getElementById(id).addEventListener('change', onChange));
-            document.getElementById('exportTitle').addEventListener('input', onChange);
+            const titleInput = document.getElementById('exportTitle');
+            titleInput.addEventListener('input', () => { exportState.titleEdited = true; onChange(); });
+            // Default the report title to the big-screen title until the moderator types their own
+            onValue(ref(database, 'settings/displayTitle'), (snapshot) => {
+                if (exportState.titleEdited) return;
+                const t = normalizeDisplayTitle(snapshot.val());
+                titleInput.value = t === DEFAULT_DISPLAY_TITLE ? 'Conference Q&A' : t;
+                refreshExport();
+            });
             document.getElementById('exportLatestDay').addEventListener('click', () => { setExportLatestDay(); onChange(); });
             document.getElementById('exportAllDates').addEventListener('click', () => {
                 document.getElementById('exportFrom').value = '';

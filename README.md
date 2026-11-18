@@ -86,6 +86,7 @@ Open all three in separate browser tabs to test the full flow end-to-end.
 - Open or close the session (prevents new audience submissions when closed)
 - **Auto-approve** on/off: when on, new questions go straight to the display (turning it on also approves anything pending) — useful when the moderator is also the presenter
 - **Seconds between questions**: set the audience cooldown live (0 = no limit)
+- **Display title**: set the big-screen heading (e.g. the event name) live; blank = "Q&A". Also the default title for Export reports
 - **Discussion Points**: load the whole day's topics up front (paste a list, one per line — leading bullets/numbers are stripped), reorder (↑/↓) or delete them, and switch **individual topics ON/OFF** as the day progresses (plus **Show all** / **Hide all**). New topics start OFF. Choose where the switched-on topics appear with two independent toggles — **Show on Audience** (phones) and **Show on Display** (big screen). Either, both or neither can be on. Points are not removed by Archive & Clear.
 - Archive and clear all questions at end of session
 - Download questions as a CSV file
@@ -138,6 +139,7 @@ settings/
   sessionOpen       — boolean (true = accepting questions)
   autoApprove       — boolean (true = new questions skip moderation)
   rateLimitSeconds  — integer 0–600 (audience cooldown; default 30 if unset)
+  displayTitle      — string ≤ 100 chars (big-screen heading; "Q&A" if unset)
   passwordHash  — SHA-256 hash of moderator password
   passwordSalt  — random hex salt for the hash
 
